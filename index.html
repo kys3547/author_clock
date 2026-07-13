@@ -428,13 +428,44 @@
                                 var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
                                 var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
 
+                                /* 📝 [고도화] 문장 단위 안전 슬라이싱 알고리즘 (Sentence-Aware Slicing) */
+                                
+                                // 1. 앞부분(first) 정제: 제한선 안에서 가장 '처음' 시작하는 완전한 문맥 역추적
                                 if (first.length > maxSideLength) {
-                                    var breakPoint = first.indexOf(' ', first.length - maxSideLength);
-                                    first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? first.length - maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
+                                    var cutIndex = first.length - maxSideLength;
+                                    // 자르려는 지점 이후로 가장 먼저 나오는 문장 종결 기호(. ? !) 탐색
+                                    var firstSentenceEnd = first.indexOf('.', cutIndex);
+                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
+                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
+                                    
+                                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
+                                        // 완전한 문장 다음부터 시작하도록 자르고 앞에 . . . 추가
+                                        first = safeEllipsisPreHtml + first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                                    } else {
+                                        // 어쩔 수 없는 경우에만 단어 단위(공백)로 자르기
+                                        var breakPoint = first.indexOf(' ', cutIndex);
+                                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                                    }
                                 }
+
+                                // 2. 뒷부분(last) 정제: 제한선 안에서 문장이 끝나는 지점이 있다면 거기를 종결점으로 지정
                                 if (last.length > maxSideLength) {
-                                    var breakPoint = last.lastIndexOf(' ', maxSideLength);
-                                    last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                    var subLast = last.slice(0, maxSideLength);
+                                    // 제한 범위 안에서 가장 마지막으로 끝난 문장 기호(. ? !)의 위치 찾기
+                                    var lastPeriod = subLast.lastIndexOf('.');
+                                    var lastQuestion = subLast.lastIndexOf('?');
+                                    var lastExclamation = subLast.lastIndexOf('!');
+                                    
+                                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+                                    
+                                    // 문장 종결 기호가 적절한 위치(최소 15자 이후)에 발견된 경우 문장 단위로 끊기
+                                    if (lastSentenceEnd > 15) {
+                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                    } else {
+                                        // 문장 종결 기호가 없다면 레이아웃 유지를 위해 어쩔 수 없이 단어 단위로 끊기
+                                        var breakPoint = subLast.lastIndexOf(' ');
+                                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                    }
                                 }
                                 
                                 var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
@@ -456,7 +487,7 @@
             };
             xhr.send();
         }
-
+        
         function showFallbackTime(timeStr) {
             safeTransitionUpdate('clockQuote', 'clockAuthor', 
                 "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
