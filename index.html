@@ -26,14 +26,12 @@
         .quote-text { font-family: 'Georgia', serif; font-weight: 300; text-align: left; word-break: normal; word-wrap: break-word; }
         .right-panel .quote-text { text-align: center; } 
         
-        /* 시인성 극대화를 위한 프리미엄 웜 앰버 테마 적용 */
         strong { font-weight: 700; color: #ff9f0a; }
         
         .quote-author { font-size: 1.2rem; color: #888; font-family: 'Georgia', serif; margin-top: 10px; -webkit-transition: margin-top 0.3s ease; transition: margin-top 0.3s ease; }
         .quote-author em { font-style: italic; color: #aaa; } 
         .right-panel .quote-author { text-align: center; width: 100%; }
 
-        /* Legacy WebKit 대응: 호환 안 되는 gap 제거 후 개별 마진으로 제어 */
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         #weatherIcon { font-size: 4.5rem; line-height: 1; margin-right: 18px; }
         .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
@@ -228,27 +226,55 @@
             document.getElementById('currentDate').innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
         }
 
+        /* 📍 HTML5 Geolocation API 기반 정밀 위치 조회로 전면 교체 (ES5 호환) */
         function fetchWeather() {
-            var lat = 37.5665; 
-            var lon = 126.9780; 
-            var cityName = "Seoul";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // 위치 권한 허용 시: 고정밀 위경도 추출
+                        var lat = position.coords.latitude;
+                        var lon = position.coords.longitude;
+                        reverseGeocode(lat, lon);
+                    },
+                    function(error) {
+                        // 권한 거부 혹은 실패 시 Fallback: 기존 IP 기반 서울 고정값 적용
+                        getWeatherData(37.5665, 126.9780, "Seoul");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                getWeatherData(37.5665, 126.9780, "Seoul");
+            }
+        }
 
-            var locXhr = new XMLHttpRequest();
-            locXhr.open("GET", "https://ipapi.co/json/", true);
-            locXhr.onreadystatechange = function() {
-                if (locXhr.readyState === 4) {
-                    if (locXhr.status === 200) {
+        /* 🗺️ 오픈소스 역지오코딩 API를 활용한 정확한 도시 이름(시 단위) 추출 */
+        function reverseGeocode(lat, lon) {
+            var xhr = new XMLHttpRequest();
+            var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon;
+            
+            xhr.open("GET", url, true);
+            // OpenStreetMap API 운영 가이드라인에 따른 User-Agent 식별자 추가
+            xhr.setRequestHeader("User-Agent", "StandByDashboard/1.4"); 
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    var cityName = "Detected Loc";
+                    if (xhr.status === 200) {
                         try {
-                            var locData = JSON.parse(locXhr.responseText);
-                            lat = locData.latitude || lat; 
-                            lon = locData.longitude || lon; 
-                            cityName = locData.city || cityName;
+                            var res = JSON.parse(xhr.responseText);
+                            // 행정구역 트리에서 '시(city)', '광역지자체(province)', 또는 '구/군' 단위 역추적
+                            cityName = res.address.city || res.address.province || res.address.borough || res.address.county || cityName;
+                            
+                            // 영문 표기 정제 (Incheon 광역시, Seongnam 시 등 깔끔하게 출력)
+                            cityName = cityName.replace(/ Metropolitan City/gi, "")
+                                               .replace(/ City/gi, "")
+                                               .replace(/-si/gi, "");
                         } catch(e) {}
                     }
                     getWeatherData(lat, lon, cityName);
                 }
             };
-            locXhr.send();
+            xhr.send();
         }
 
         function getWeatherData(lat, lon, cityName) {
@@ -374,7 +400,7 @@
                                 }
                                 
                                 var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
-                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
                                                            .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
                                                            .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
                                 
