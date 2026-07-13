@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Custom StandBy Clock</title>
+    <style>
+        /* 기본 스타일 및 다크모드 테마 */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background-color: #0b0b0c; color: #e3e3e6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; height: 100vh; }
+        
+        /* 50:50 좌우 분할 레이아웃 */
+        .container { display: flex; width: 100vw; height: 100vh; position: relative; }
+        
+        /* 좌측 스크롤 위젯 영역 */
+        .left-panel { width: 50%; height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; border-right: 1px solid #222; }
+        .widget { height: 100vh; scroll-snap-align: start; padding: 40px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        
+        /* 우측 Author Clock 영역 */
+        .right-panel { width: 50%; height: 100vh; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #050505; }
+        
+        /* 문학 시계/날씨 폰트 스타일 */
+        .quote-text { font-size: 2.2rem; line-height: 1.5; margin-bottom: 20px; font-family: 'Georgia', serif; font-weight: 300; text-align: left; max-width: 90%; }
+        .quote-text strong { font-weight: 700; color: #ffffff; border-bottom: 2px solid #ffcc00; }
+        .quote-author { font-size: 1.1rem; color: #888; font-style: italic; }
+
+        /* 개별 위젯 내부 스타일 */
+        .weather-header { font-size: 3rem; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .widget-title { font-size: 1.2rem; color: #ffcc00; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; max-width: 400px; text-align: center; }
+        .calendar-day { padding: 10px; background: #18181c; border-radius: 8px; font-size: 1.1rem; }
+        .calendar-day.today { background: #ffcc00; color: #000; font-weight: bold; }
+        .noti-item { padding: 15px; background: #18181c; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #ffcc00; font-size: 1.2rem; }
+
+        /* 설정 버튼 및 창 */
+        .settings-btn { position: absolute; bottom: 20px; left: 20px; font-size: 1.5rem; background: none; border: none; color: #444; cursor: pointer; z-index: 10; }
+        .settings-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1c1c1e; padding: 30px; border-radius: 15px; border: 1px solid #333; z-index: 100; width: 320px; }
+        .settings-modal h3 { margin-bottom: 15px; }
+        .settings-modal input, .settings-modal select { width: 100%; padding: 10px; margin-bottom: 15px; background: #2c2c2e; border: 1px solid #444; color: #fff; border-radius: 5px; }
+        .settings-modal button { width: 100%; padding: 10px; background: #ffcc00; border: none; color: #000; font-weight: bold; border-radius: 5px; cursor: pointer; }
+
+        /* 화면 보호기 (Screensaver) 오버레이 */
+        .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; justify-content: center; align-items: center; cursor: pointer; }
+        .screensaver-clock { font-size: 6rem; font-weight: 100; color: #333; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="mainDashboard">
+        <!-- 설정 오픈 버튼 -->
+        <button class="settings-btn" onclick="toggleSettings(true)">⚙️</button>
+
+        <!-- 좌측: 위아래로 스크롤 되는 위젯 레이어 -->
+        <div class="left-panel">
+            <!-- 1번 위젯: Author Weather -->
+            <div class="widget" id="weatherWidget">
+                <div class="widget-title">Author Weather</div>
+                <div class="weather-header">
+                    <span id="weatherIcon">☀️</span> 
+                    <span id="tempDisplay">24°C</span>
+                    <span id="locationDisplay" style="font-size: 1.2rem; color: #666;">Seoul</span>
+                </div>
+                <div class="quote-text" id="weatherQuote">"The sun was **warm** but the wind was chill."</div>
+                <div class="quote-author" id="weatherAuthor">- Robert Frost</div>
+            </div>
+
+            <!-- 2번 위젯: 달력 -->
+            <div class="widget">
+                <div class="widget-title">Calendar</div>
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- 자바스크립트가 오늘 날짜 기반으로 칸을 생성합니다 -->
+                </div>
+            </div>
+
+            <!-- 3번 위젯: 알림/알람 리스트 -->
+            <div class="widget">
+                <div class="widget-title">Reminders</div>
+                <div class="noti-item">📝 SQLD Exam Prep Study</div>
+                <div class="noti-item">🏋️ Shoulder Workout Routine</div>
+                <div class="noti-item">✈️ Military Vacation Planning</div>
+            </div>
+        </div>
+
+        <!-- 우측: Author Clock -->
+        <div class="right-panel">
+            <div class="widget-title" style="margin-bottom: 30px;">Author Clock</div>
+            <div class="quote-text" id="clockQuote">Loading literature clock...</div>
+            <div class="quote-author" id="clockAuthor"></div>
+        </div>
+    </div>
+
+    <!-- 설정 팝업창 -->
+    <div class="settings-modal" id="settingsModal">
+        <h3>Dashboard Settings</h3>
+        <label>Location (City)</label>
+        <input type="text" id="inputLocation" value="Seoul">
+        
+        <label>Screensaver Idle (Minutes)</label>
+        <select id="inputIdleTime">
+            <option value="1">1 Minute</option>
+            <option value="5" selected>5 Minutes</option>
+            <option value="10">10 Minutes</option>
+            <option value="30">30 Minutes</option>
+        </select>
+        <button onclick="saveSettings()">Save & Close</button>
+    </div>
+
+    <!-- 화면 보호기 레이어 -->
+    <div class="screensaver" id="screensaverOverlay" onclick="wakeUp()">
+        <div class="screensaver-clock" id="ssClock">00:00</div>
+    </div>
+
+    <script>
+        // --- 1. 임시 데이터베이스 (오프라인 구동용 내장 데이터) ---
+        // 시간별 데이터 샘플 (실제로는 1440개의 분량이 들어가게 됩니다)
+        const timeQuotes = {
+            "default": { q: "It was a dark and stormy night, and the clock struck **twelve**.", a: "Edward George Bulwer-Lytton" },
+            "07:00": { q: "The breakfast bell rang at **seven o'clock** sharp.", a: "Lewis Carroll" },
+            "12:00": { q: "The sun was high, striking exactly **twelve** in the noon sky.", a: "Mark Twain" },
+            "15:49": { q: "It was now **three forty-nine** in the afternoon, the perfect time for tea.", a: "Agatha Christie" }
+        };
+
+        // 날씨 상태별 데이터 샘플
+        const weatherQuotes = {
+            "Clear": { q: "The sky was **perfectly clear** and the sun shone bright.", a: "Jane Austen", icon: "☀️" },
+            "Rain": { q: "The **heavy rain** pattered against the window panes.", a: "Charlotte Brontë", icon: "🌧️" },
+            "Snow": { q: "The ground was covered in a **thin layer of snow**.", a: "Isaac Asimov", icon: "❄️" }
+        };
+
+        // --- 2. 핵심 로직 및 타이머 기능 ---
+        let idleTimer;
+        let idleLimit = 300000; // 기본 5분 (밀리초 단위)
+
+        function init() {
+            loadSettings();
+            updateClock();
+            updateWeather();
+            buildCalendar();
+            resetIdleTimer();
+
+            // 1분마다 시간 및 날씨 동기화 업데이트
+            setInterval(updateClock, 60000);
+            setInterval(updateWeather, 600000); // 날씨는 10분마다
+
+            // 화면 전체에 터치 감지 이벤트 등록 (터치하면 화면보호기 타이머 리셋)
+            document.body.addEventListener('touchstart', resetIdleTimer);
+            document.body.addEventListener('click', resetIdleTimer);
+        }
+
+        // --- 3. 기능별 세부 자바스크립트 함수 ---
+        function updateClock() {
+            const now = new Date();
+            let hours = String(now.getHours()).padStart(2, '0');
+            let minutes = String(now.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}`;
+
+            // 화면 보호기용 디지털 시계 업데이트
+            document.getElementById('ssClock').innerText = timeStr;
+
+            // Author Clock 인용구 변경 매칭
+            const match = timeQuotes[timeStr] || timeQuotes["default"];
+            document.getElementById('clockQuote').innerHTML = match.q;
+            document.getElementById('clockAuthor').innerText = `- ${match.a}`;
+        }
+
+        function updateWeather() {
+            // 오프라인 작동을 최우선으로 하므로 가상의 날씨 엔진을 기본 구동합니다.
+            // (온라인 상태일 때 OpenWeatherMap API를 연결해 연동되도록 확장이 가능합니다.)
+            const mockWeatherStates = ["Clear", "Rain", "Snow"];
+            const randomState = mockWeatherStates[Math.floor(Math.random() * mockWeatherStates.length)];
+            const match = weatherQuotes[randomState];
+
+            document.getElementById('weatherIcon').innerText = match.icon;
+            document.getElementById('weatherQuote').innerHTML = match.q;
+            document.getElementById('weatherAuthor').innerText = `- ${match.a}`;
+            
+            // 날씨 기온 임의 변동 (예시)
+            const baseTemp = randomState === "Snow" ? "-4°C" : "24°C";
+            document.getElementById('tempDisplay').innerText = baseTemp;
+        }
+
+        function buildCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = "";
+            const today = new Date().getDate();
+            
+            // 미니 달력용 주변 일자 간단 표시 렌더링
+            for(let i = -3; i <= 3; i++) {
+                const targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + i);
+                const dayDiv = document.createElement('div');
+                dayDiv.classList.add('calendar-day');
+                if(i === 0) dayDiv.classList.add('today');
+                dayDiv.innerText = targetDate.getDate();
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        // --- 4. 설정 및 화면 보호기 제어 함수 ---
+        function resetIdleTimer() {
+            clearTimeout(idleTimer);
+            // 화면 보호기 모드가 아닐 때만 타이머 가동
+            if (document.getElementById('screensaverOverlay').style.display !== 'flex') {
+                idleTimer = setTimeout(startScreensaver, idleLimit);
+            }
+        }
+
+        function startScreensaver() {
+            document.getElementById('screensaverOverlay').style.display = 'flex';
+        }
+
+        function wakeUp() {
+            document.getElementById('screensaverOverlay').style.display = 'none';
+            resetIdleTimer();
+        }
+
+        function toggleSettings(show) {
+            document.getElementById('settingsModal').style.display = show ? 'block' : 'none';
+        }
+
+        function saveSettings() {
+            const loc = document.getElementById('inputLocation').value;
+            const minutes = document.getElementById('inputIdleTime').value;
+            
+            localStorage.setItem('dashboard_location', loc);
+            localStorage.setItem('dashboard_idle', minutes);
+            
+            loadSettings();
+            toggleSettings(false);
+        }
+
+        function loadSettings() {
+            const storedLoc = localStorage.getItem('dashboard_location') || 'Seoul';
+            const storedMinutes = localStorage.getItem('dashboard_idle') || '5';
+            
+            document.getElementById('locationDisplay').innerText = storedLoc;
+            document.getElementById('inputLocation').value = storedLoc;
+            document.getElementById('inputIdleTime').value = storedMinutes;
+            
+            idleLimit = parseInt(storedMinutes) * 60 * 1000;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
