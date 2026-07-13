@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Minimal StandBy Dashboard</title>
     
-    <!-- 📱 Apple 전용 웹앱(PWA) 설정 태그 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StandBy">
     
-    <!-- 🎨 홈 화면에 표시될 앱 아이콘 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3593/3593455.png">
 
     <style>
@@ -38,12 +36,32 @@
         .quote-author em { font-style: italic; color: #aaa; } 
         .right-panel .quote-author { text-align: center; width: 100%; }
 
-        /* 실시간 날씨 표시 영역 */
-        .weather-info { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; font-size: 3.5rem; font-weight: 200; }
-        .weather-info span.temp { font-size: 2.5rem; color: #aaa; }
-        
-        /* 📐 [레이아웃 수정] 기온 숫자 아랫단과 완벽하게 수평 정렬 일치시킴 */
-        .weather-info span.city { font-size: 1.1rem; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; align-self: baseline; }
+        /* 📐 [레이아웃 정밀 수정] 날씨 레이아웃 바닥 완전 밀착화 */
+        .weather-info { 
+            display: flex; 
+            align-items: flex-end; /* 모든 요소를 컨테이너의 최하단 바닥으로 정렬 */
+            gap: 14px; 
+            margin-bottom: 35px; 
+        }
+        #weatherIcon { 
+            font-size: 3.5rem; 
+            line-height: 1; /* 불필요한 위아래 여백 강제 제거 */
+        }
+        .weather-info span.temp { 
+            font-size: 2.5rem; 
+            color: #aaa; 
+            font-weight: 200;
+            line-height: 1; /* 텍스트 박스 높이를 글자 크기에 딱 맞춤 */
+        }
+        .weather-info span.city { 
+            font-size: 1.1rem; 
+            color: #555; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            line-height: 1; 
+            margin-bottom: 3px; /* 대문자 폰트 특유의 미세한 베이스라인 오차 보정 */
+        }
 
         /* 내장형 화면 보호기 오버레이 (터치 없을 시 암전) */
         .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; cursor: pointer; }
@@ -51,7 +69,6 @@
 </head>
 <body>
 
-    <!-- 좌측: 실시간 문학 날씨 -->
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
         <div class="weather-info">
@@ -63,13 +80,11 @@
         <div class="quote-author" id="weatherAuthor"></div>
     </div>
 
-    <!-- 우측: 실시간 문학 시계 -->
     <div class="panel right-panel" id="clockPanel">
         <div class="quote-text" id="clockQuote">Syncing time with literature...</div>
         <div class="quote-author" id="clockAuthor"></div>
     </div>
 
-    <!-- 화면 보호기 오버레이 -->
     <div class="screensaver" id="screensaverOverlay" onclick="wakeUp()"></div>
 
     <script>
@@ -182,13 +197,11 @@
                     let timeCase = selected.quote_time_case || "";
                     let last = selected.quote_last || "";
                     
-                    // 📏 [업데이트] 기존 75자 제한에서 130자로 대폭 확장 (화면에 1~2줄 더 넉넉히 출력)
                     const maxSideLength = 130;
                     
                     if (first.length > maxSideLength) {
                         let breakPoint = first.indexOf(' ', first.length - maxSideLength);
                         if (breakPoint === -1) breakPoint = first.length - maxSideLength;
-                        // 💬 [업데이트] 괄호를 제거하고 정갈한 클래식 스타일의 . . . 로 교체
                         first = ". . . " + first.slice(breakPoint).trim();
                     }
                     
@@ -216,7 +229,6 @@
         }
 
         function showFallbackTime(timeStr) {
-            // 💬 [업데이트] 기본 예외 화면도 괄호 없는 . . . 스타일로 보정
             document.getElementById('clockQuote').innerHTML = `The clock hands quietly moved to <strong>${timeStr}</strong> . . . waiting for the next story.`;
             document.getElementById('clockAuthor').innerHTML = "- Unknown Timekeeper";
         }
