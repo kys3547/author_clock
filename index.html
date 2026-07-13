@@ -9,24 +9,25 @@
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { background-color: #0b0b0c; color: #e3e3e6; font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; height: 100vh; display: flex; }
         
-        /* 50:50 좌우 분할 (타이틀 제거, 미니멀리즘 극대화) */
+        /* 50:50 좌우 분할 */
         .panel { width: 50%; height: 100vh; padding: 50px; display: flex; flex-direction: column; justify-content: center; }
         .left-panel { border-right: 1px solid #222; background-color: #0b0b0c; align-items: flex-start; }
         .right-panel { background-color: #050505; align-items: center; }
         
         /* 문구 및 저자 폰트 스타일 */
         .quote-text { font-size: 2.4rem; line-height: 1.6; margin-bottom: 25px; font-family: 'Georgia', serif; font-weight: 300; text-align: left; }
-        .right-panel .quote-text { text-align: center; } /* 오른쪽 시계는 중앙 정렬 */
+        .right-panel .quote-text { text-align: center; } 
         
-        /* 강조 표시 (볼드체 대신 밑줄 적용) */
+        /* 강조 표시 (요청하신 깔끔한 밑줄 처리) */
         u { text-decoration: none; border-bottom: 3px solid #e3e3e6; padding-bottom: 2px; }
         
         .quote-author { font-size: 1.2rem; color: #888; font-style: italic; font-family: 'Georgia', serif; }
         .right-panel .quote-author { text-align: center; width: 100%; }
 
-        /* 실시간 날씨 아이콘 및 온도 표시 영역 */
-        .weather-info { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; font-size: 3.5rem; font-weight: 200; }
+        /* 실시간 날씨 표시 영역 (도시 이름 추가) */
+        .weather-info { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; font-size: 3.5rem; font-weight: 200; }
         .weather-info span.temp { font-size: 2.5rem; color: #aaa; }
+        .weather-info span.city { font-size: 1.1rem; color: #555; font-weight: 500; text-transform: uppercase; letter-spacing: 2px; align-self: flex-end; padding-bottom: 8px; }
 
         /* 화면 보호기 (터치 없을 시 어두워짐) */
         .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; cursor: pointer; }
@@ -34,32 +35,28 @@
 </head>
 <body>
 
-    <!-- 좌측: 실시간 문학 날씨 -->
     <div class="panel left-panel" id="weatherPanel">
         <div class="weather-info">
             <span id="weatherIcon">--</span>
             <span class="temp" id="weatherTemp">--°C</span>
+            <span class="city">Seoul</span>
         </div>
         <div class="quote-text" id="weatherQuote">Loading real-time weather...</div>
         <div class="quote-author" id="weatherAuthor"></div>
     </div>
 
-    <!-- 우측: 실시간 문학 시계 -->
     <div class="panel right-panel" id="clockPanel">
         <div class="quote-text" id="clockQuote">Syncing time with literature...</div>
         <div class="quote-author" id="clockAuthor"></div>
     </div>
 
-    <!-- 화면 보호기 오버레이 -->
     <div class="screensaver" id="screensaverOverlay" onclick="wakeUp()"></div>
 
     <script>
-        // --- 데이터 관리 ---
-        let literatureClockData = null;
         let idleTimer;
         const idleLimit = 5 * 60 * 1000; // 5분 후 화면 보호기 작동
 
-        // 날씨 상태별 문구 데이터베이스 (날씨에 맞게 밑줄 처리 <u> 적용)
+        // 날씨 상태별 문구 데이터베이스
         const weatherDatabase = {
             "Clear": { q: "The sky was <u>perfectly clear</u> and the sun shone bright, casting long shadows across the empty street.", a: "Jane Austen", icon: "☀️" },
             "Clouds": { q: "The <u>gray clouds</u> gathered heavily above, swallowing the remaining light of the afternoon.", a: "Emily Brontë", icon: "☁️" },
@@ -68,32 +65,27 @@
             "Thunderstorm": { q: "A sudden crack of <u>thunder</u> shook the floorboards, followed by a brilliant flash of lightning.", a: "Mary Shelley", icon: "⛈️" }
         };
 
-        // --- 앱 초기화 ---
+        // 앱 초기화
         async function init() {
             resetIdleTimer();
             setupEventListeners();
             
-            // 데이터 실시간 로드 시작
             await fetchWeather();
-            await fetchLiteratureClockData();
-            
-            updateClock();
+            await updateClock();
 
-            // 주기적 업데이트 (시계는 1분마다, 날씨는 30분마다)
+            // 주기적 업데이트 (시계는 1분마다 동기화, 날씨는 30분마다)
             setInterval(updateClock, 60000);
             setInterval(fetchWeather, 30 * 60000);
         }
 
-        // --- 1. 실시간 날씨 연동 (Open-Meteo API) ---
+        // 1. 실시간 날씨 연동 (Open-Meteo API)
         async function fetchWeather() {
             try {
-                // 사용자의 위도, 경도 좌표를 기반으로 무료 기상청 API 호출
                 const response = await fetch("https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true");
                 const data = await response.json();
                 const temp = Math.round(data.current_weather.temperature);
                 const code = data.current_weather.weathercode;
                 
-                // WMO 날씨 코드 변환 로직
                 let weatherCondition = "Clear";
                 if (code >= 1 && code <= 3) weatherCondition = "Clouds";
                 else if (code >= 51 && code <= 67) weatherCondition = "Rain";
@@ -112,51 +104,55 @@
             }
         }
 
-        // --- 2. 문학 시계 데이터 패치 (GitHub 오픈소스 연동) ---
-        async function fetchLiteratureClockData() {
-            try {
-                // Literature Clock 오픈소스의 원본 JSON 데이터를 로드
-                const response = await fetch('https://raw.githubusercontent.com/JohannesNE/literature-clock/master/times.json');
-                literatureClockData = await response.json();
-            } catch (error) {
-                console.error("Literature Clock data fetching failed:", error);
-                literatureClockData = null; // 실패 시 내장 폴백 로직 사용
-            }
-        }
-
-        function updateClock() {
+        // 2. 실시간 문학 시계 연동 (매분 고유 JSON 데이터 조각을 실시간으로 가져옴)
+        async function updateClock() {
             const now = new Date();
             let hours = String(now.getHours()).padStart(2, '0');
             let minutes = String(now.getMinutes()).padStart(2, '0');
-            const timeStr = `${hours}:${minutes}`;
+            const fileTimeStr = `${hours}_${minutes}`; // 데이터 저장 포맷인 HH_mm 형태로 변환 (예: 16_17)
 
-            let displayQuote = "";
-            let displayAuthor = "";
-
-            if (literatureClockData && literatureClockData[timeStr]) {
-                // 해당 시간에 매칭되는 인용구 중 첫 번째(또는 랜덤) 항목 선택
-                const quotesArray = literatureClockData[timeStr];
-                const selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+            try {
+                // 원작자가 분 단위로 쪼개놓은 고유 주소로 직접 실시간 패치(fetch)를 보냅니다.
+                const response = await fetch(`https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/${fileTimeStr}.json`);
+                if (!response.ok) throw new Error("Fetch failed");
                 
-                // 원본 데이터의 강조 표시(*, **, <em>)를 모두 <u> 태그(밑줄)로 변환
-                let rawQuote = selected.quote_first + " " + selected.quote_time_case + " " + selected.quote_last;
-                rawQuote = rawQuote.replace(/\*\*(.*?)\*\*/g, '<u>$1</u>');
-                rawQuote = rawQuote.replace(/\*(.*?)\*/g, '<u>$1</u>');
-                rawQuote = rawQuote.replace(/<em>(.*?)<\/em>/gi, '<u>$1</u>');
+                const quotesArray = await response.json();
                 
-                displayQuote = rawQuote;
-                displayAuthor = `- ${selected.title}, ${selected.author}`;
-            } else {
-                // 데이터를 아직 불러오지 못했거나 매칭되는 시간이 없을 경우의 백업 로직
-                displayQuote = `The clock hands quietly moved to <u>${timeStr}</u>, waiting for the next story.`;
-                displayAuthor = "- Unknown Timekeeper";
+                if (quotesArray && quotesArray.length > 0) {
+                    // 해당 분에 매칭되는 문구 리스트 중 하나를 무작위 선택
+                    const selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                    
+                    let first = selected.quote_first || "";
+                    let timeCase = selected.quote_time_case || ""; // 실제 시간이 포함된 핵심 단어 부분
+                    let last = selected.quote_last || "";
+                    
+                    // 핵심 시간 단어 부위에 깔끔하게 밑줄(<u>) 태그를 적용하여 조립
+                    let displayQuote = `${first} <u>${timeCase}</u> ${last}`;
+                    
+                    // 혹시 문장 내부에 잔여 마크다운 스타일(*, **)이 섞여있을 경우를 대비한 정제 작업
+                    displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<u>$1</u>');
+                    displayQuote = displayQuote.replace(/\*(.*?)\*/g, '<u>$1</u>');
+                    displayQuote = displayQuote.replace(/<em>(.*?)<\/em>/gi, '<u>$1</u>');
+                    
+                    let displayAuthor = `- ${selected.title}, ${selected.author}`;
+                    
+                    document.getElementById('clockQuote').innerHTML = displayQuote;
+                    document.getElementById('clockAuthor').innerText = displayAuthor;
+                } else {
+                    showFallbackTime(`${hours}:${minutes}`);
+                }
+            } catch (error) {
+                console.error("Literature Clock error:", error);
+                showFallbackTime(`${hours}:${minutes}`);
             }
-
-            document.getElementById('clockQuote').innerHTML = displayQuote;
-            document.getElementById('clockAuthor').innerText = displayAuthor;
         }
 
-        // --- 3. 화면 보호기 (Screensaver) 관리 ---
+        function showFallbackTime(timeStr) {
+            document.getElementById('clockQuote').innerHTML = `The clock hands quietly moved to <u>${timeStr}</u>, waiting for the next story.`;
+            document.getElementById('clockAuthor').innerText = "- Unknown Timekeeper";
+        }
+
+        // 3. 화면 보호기 관리
         function setupEventListeners() {
             document.body.addEventListener('touchstart', resetIdleTimer);
             document.body.addEventListener('mousemove', resetIdleTimer);
@@ -175,10 +171,9 @@
         function wakeUp() {
             document.getElementById('screensaverOverlay').style.display = 'none';
             resetIdleTimer();
-            updateClock(); // 깨어날 때 시간 즉시 동기화
+            updateClock();
         }
 
-        // 앱 실행
         window.onload = init;
     </script>
 </body>
