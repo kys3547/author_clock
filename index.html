@@ -329,6 +329,14 @@
         }
 
         function updateClock(hours, minutes) {
+            // 18시 52분 전용 커스텀 인용구 오버라이드
+            if (hours === "18" && minutes === "52") {
+                var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
+                var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
+                safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
+                return; // 여기서 함수를 종료해서 외부 데이터를 안 불러오게 막음!
+            }
+            
             var fileTimeStr = hours + "_" + minutes;
             var xhr = new XMLHttpRequest();
             var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
