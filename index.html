@@ -33,15 +33,17 @@
         /* 강조 표시 (볼드체 스타일) */
         strong { font-weight: 700; color: #ffffff; }
         
-        /* 🎨 [업데이트] 전체 이탈릭(italic) 플래그를 제거하고 가독성 확보 */
+        /* 저자 및 작품명 영역 */
         .quote-author { font-size: 1.2rem; color: #888; font-family: 'Georgia', serif; }
-        .quote-author em { font-style: italic; color: #aaa; } /* 작품명은 이탈릭체 + 약간 더 밝게 처리 */
+        .quote-author em { font-style: italic; color: #aaa; } 
         .right-panel .quote-author { text-align: center; width: 100%; }
 
         /* 실시간 날씨 표시 영역 */
         .weather-info { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; font-size: 3.5rem; font-weight: 200; }
         .weather-info span.temp { font-size: 2.5rem; color: #aaa; }
-        .weather-info span.city { font-size: 1.1rem; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; align-self: flex-end; padding-bottom: 8px; }
+        
+        /* 📐 [레이아웃 수정] 기온 숫자 아랫단과 완벽하게 수평 정렬 일치시킴 */
+        .weather-info span.city { font-size: 1.1rem; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; align-self: baseline; }
 
         /* 내장형 화면 보호기 오버레이 (터치 없을 시 암전) */
         .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; cursor: pointer; }
@@ -75,7 +77,6 @@
         let lastTimeStr = ""; 
         const idleLimit = 5 * 60 * 1000; // 5분 후 화면 보호기 작동
 
-        // 🎨 [업데이트] 날씨 데이터베이스의 작품명 부위에 <em> 태그 적용
         const weatherDatabase = {
             "Clear": { q: "The sky was <strong>perfectly clear</strong> and the sun shone bright, casting long shadows across the empty street.", a: "<em>Pride and Prejudice</em>, Jane Austen", icon: "☀️" },
             "Clouds": { q: "The <strong>gray clouds</strong> gathered heavily above, swallowing the remaining light of the afternoon.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☁️" },
@@ -142,7 +143,6 @@
                 document.getElementById('weatherTemp').innerText = `${temp}°C`;
                 document.getElementById('cityLabel').innerText = cityName;
                 document.getElementById('weatherQuote').innerHTML = match.q;
-                // 🎨 innerHTML로 변경하여 태그 렌더링 활성화
                 document.getElementById('weatherAuthor').innerHTML = `- ${match.a}`;
             } catch (error) {
                 document.getElementById('weatherIcon').innerText = "🌐";
@@ -182,18 +182,20 @@
                     let timeCase = selected.quote_time_case || "";
                     let last = selected.quote_last || "";
                     
-                    const maxSideLength = 75;
+                    // 📏 [업데이트] 기존 75자 제한에서 130자로 대폭 확장 (화면에 1~2줄 더 넉넉히 출력)
+                    const maxSideLength = 130;
                     
                     if (first.length > maxSideLength) {
                         let breakPoint = first.indexOf(' ', first.length - maxSideLength);
                         if (breakPoint === -1) breakPoint = first.length - maxSideLength;
-                        first = "(…) " + first.slice(breakPoint).trim();
+                        // 💬 [업데이트] 괄호를 제거하고 정갈한 클래식 스타일의 . . . 로 교체
+                        first = ". . . " + first.slice(breakPoint).trim();
                     }
                     
                     if (last.length > maxSideLength) {
                         let breakPoint = last.lastIndexOf(' ', maxSideLength);
                         if (breakPoint === -1) breakPoint = maxSideLength;
-                        last = last.slice(0, breakPoint).trim() + " (…)";
+                        last = last.slice(0, breakPoint).trim() + " . . .";
                     }
                     
                     let displayQuote = `${first} <strong>${timeCase}</strong> ${last}`;
@@ -201,7 +203,6 @@
                     displayQuote = displayQuote.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
                     displayQuote = displayQuote.replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
                     
-                    // 🎨 [업데이트] 시계 파트도 작품명만 <em> 태그로 감싸고 innerHTML로 매핑
                     let displayAuthor = `- <em>${selected.title}</em>, ${selected.author}`;
                     
                     document.getElementById('clockQuote').innerHTML = displayQuote;
@@ -215,7 +216,8 @@
         }
 
         function showFallbackTime(timeStr) {
-            document.getElementById('clockQuote').innerHTML = `The clock hands quietly moved to <strong>${timeStr}</strong>, waiting for the next story.`;
+            // 💬 [업데이트] 기본 예외 화면도 괄호 없는 . . . 스타일로 보정
+            document.getElementById('clockQuote').innerHTML = `The clock hands quietly moved to <strong>${timeStr}</strong> . . . waiting for the next story.`;
             document.getElementById('clockAuthor').innerHTML = "- Unknown Timekeeper";
         }
 
