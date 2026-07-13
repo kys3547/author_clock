@@ -25,15 +25,18 @@
         .quote-text { font-family: 'Georgia', serif; font-weight: 300; text-align: left; word-break: normal; word-wrap: break-word; }
         .right-panel .quote-text { text-align: center; } 
         
-        strong { font-weight: 700; color: #ffffff; }
+        /* 시인성 극대화를 위한 프리미엄 웜 앰버 테마 적용 */
+        strong { font-weight: 700; color: #ff9f0a; }
+        
         .quote-author { font-size: 1.2rem; color: #888; font-family: 'Georgia', serif; margin-top: 10px; -webkit-transition: margin-top 0.3s ease; transition: margin-top 0.3s ease; }
         .quote-author em { font-style: italic; color: #aaa; } 
         .right-panel .quote-author { text-align: center; width: 100%; }
 
-        .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; gap: 14px; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
-        #weatherIcon { font-size: 3.5rem; line-height: 1; }
-        .weather-info span.temp { font-size: 2.5rem; color: #aaa; font-weight: 200; line-height: 1; }
-        .weather-info span.city { font-size: 1.1rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; line-height: 1; margin-bottom: 3px; }
+        /* Legacy WebKit 대응: 호환 안 되는 gap 제거 후 개별 마진으로 제어 */
+        .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
+        #weatherIcon { font-size: 4.5rem; line-height: 1; margin-right: 18px; }
+        .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
+        .weather-info span.city { font-size: 1.1rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; line-height: 1; margin-bottom: 5px; }
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
         .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; cursor: pointer; }
@@ -44,10 +47,12 @@
             .left-panel { border-right: none; border-bottom: 1px solid #222; -webkit-justify-content: flex-end; justify-content: flex-end; padding-bottom: 40px; }
             .right-panel { -webkit-justify-content: flex-start; justify-content: flex-start; padding-top: 40px; }
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
-            .weather-info { margin-bottom: 20px; gap: 12px; }
-            #weatherIcon { font-size: 3rem; }
-            .weather-info span.temp { font-size: 2.2rem; }
-            .weather-info span.city { font-size: 0.95rem; }
+            
+            .weather-info { margin-bottom: 20px; }
+            #weatherIcon { font-size: 3.8rem; margin-right: 14px; }
+            .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
+            .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
+            
             .quote-author { font-size: 1.1rem; margin-top: 8px; }
         }
     </style>
@@ -329,14 +334,13 @@
         }
 
         function updateClock(hours, minutes) {
-            // 18시 52분 전용 커스텀 인용구 오버라이드
             if (hours === "18" && minutes === "52") {
                 var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
                 var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
                 safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
-                return; // 여기서 함수를 종료해서 외부 데이터를 안 불러오게 막음!
+                return;
             }
-            
+
             var fileTimeStr = hours + "_" + minutes;
             var xhr = new XMLHttpRequest();
             var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
