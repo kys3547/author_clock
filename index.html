@@ -5,57 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Universal StandBy Dashboard</title>
     
-    <!-- 📱 Apple 전용 웹앱(PWA) 설정 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StandBy">
     
-    <!-- 📚 [아이콘 오류 해결] 외부 링크 대신 고해상도 '문학 시계' SVG 아이콘 직접 내장 -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180' width='180' height='180'><rect width='180' height='180' rx='40' fill='%23121316'/><path d='M45 55C45 46.7157 51.7157 40 60 40H90V140H60C51.7157 140 45 133.284 45 125V55Z' fill='%231e212a'/><path d='M135 55C135 46.7157 128.284 40 120 40H90V140H120C128.284 140 135 133.284 135 125V55Z' fill='%23252936'/><path d='M55 135C70 135 85 138 90 142C95 138 110 135 125 135' stroke='%234a5164' stroke-width='4' fill='none' stroke-linecap='round'/><circle cx='90' cy='85' r='30' fill='%23121316' stroke='%23d1d5db' stroke-width='3'/><path d='M90 63V85L104 94' stroke='%23e3e3e6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/><circle cx='90' cy='85' r='2' fill='%23ffffff'/></svg>">
 
     <style>
-        /* 미니멀 다크 테마 기본 설정 */
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { background-color: #0b0b0c; color: #e3e3e6; font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: row; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body { background-color: #0b0b0c; color: #e3e3e6; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; height: 100vh; display: -webkit-flex; display: flex; -webkit-flex-direction: row; flex-direction: row; }
         
-        /* 기본 데스크탑/아이패드 가로 레이아웃 (Landscape) */
-        .panel { width: 50%; height: 100vh; padding: 60px 50px; display: flex; flex-direction: column; justify-content: center; position: relative; }
-        .left-panel { border-right: 1px solid #222; background-color: #0b0b0c; align-items: flex-start; }
-        .right-panel { background-color: #050505; align-items: center; }
+        .panel { width: 50%; height: 100vh; padding: 60px 50px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; position: relative; }
+        .left-panel { border-right: 1px solid #222; background-color: #0b0b0c; -webkit-align-items: flex-start; align-items: flex-start; }
+        .right-panel { background-color: #050505; -webkit-align-items: center; align-items: center; }
         
-        /* 실시간 날짜 표시 (좌측 상단) */
         .date-display { position: absolute; top: 40px; left: 50px; font-size: 1.1rem; color: #666; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
 
-        /* 문구 및 저자 텍스트 페이드 전환 효과 */
-        .quote-text, .quote-author { transition: opacity 0.5s ease-in-out, font-size 0.3s ease, line-height 0.3s ease; opacity: 1; }
+        .quote-text, .quote-author { -webkit-transition: opacity 0.5s ease-in-out, font-size 0.3s ease, line-height 0.3s ease; transition: opacity 0.5s ease-in-out, font-size 0.3s ease, line-height 0.3s ease; opacity: 1; }
         .quote-text { font-family: 'Georgia', serif; font-weight: 300; text-align: left; word-break: normal; word-wrap: break-word; }
         .right-panel .quote-text { text-align: center; } 
         
         strong { font-weight: 700; color: #ffffff; }
-        .quote-author { font-size: 1.2rem; color: #888; font-family: 'Georgia', serif; margin-top: 10px; transition: margin-top 0.3s ease; }
+        .quote-author { font-size: 1.2rem; color: #888; font-family: 'Georgia', serif; margin-top: 10px; -webkit-transition: margin-top 0.3s ease; transition: margin-top 0.3s ease; }
         .quote-author em { font-style: italic; color: #aaa; } 
         .right-panel .quote-author { text-align: center; width: 100%; }
 
-        /* 날씨 정보 레이아웃 바닥 밀착형 */
-        .weather-info { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 35px; transition: margin-bottom 0.3s ease; }
+        .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; gap: 14px; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         #weatherIcon { font-size: 3.5rem; line-height: 1; }
         .weather-info span.temp { font-size: 2.5rem; color: #aaa; font-weight: 200; line-height: 1; }
         .weather-info span.city { font-size: 1.1rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; line-height: 1; margin-bottom: 3px; }
 
-        /* 생략 기호 가독성 및 줄바꿈 차단 스타일 */
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
+        .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; cursor: pointer; }
 
-        /* 내장 화면 보호기 */
-        .screensaver { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 1000; cursor: pointer; }
-
-        /* 🔄 아이패드/스마트폰 '세로 모드' 통합 최적화 */
         @media (orientation: portrait) {
-            body { flex-direction: column; } 
-            
+            body { -webkit-flex-direction: column; flex-direction: column; } 
             .panel { width: 100%; height: 50vh; padding: 40px 40px; }
-            .left-panel { border-right: none; border-bottom: 1px solid #222; justify-content: flex-end; padding-bottom: 40px; }
-            .right-panel { justify-content: flex-start; padding-top: 40px; }
-            
+            .left-panel { border-right: none; border-bottom: 1px solid #222; -webkit-justify-content: flex-end; justify-content: flex-end; padding-bottom: 40px; }
+            .right-panel { -webkit-justify-content: flex-start; justify-content: flex-start; padding-top: 40px; }
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             .weather-info { margin-bottom: 20px; gap: 12px; }
             #weatherIcon { font-size: 3rem; }
@@ -86,144 +73,96 @@
     <div class="screensaver" id="screensaverOverlay" onclick="wakeUp()"></div>
 
     <script>
-        let idleTimer;
-        let lastTimeStr = ""; 
-        const idleLimit = 5 * 60 * 1000;
+        var idleTimer;
+        var lastTimeStr = ""; 
+        var idleLimit = 5 * 60 * 1000;
 
-        const weatherDatabase = {
+        var weatherDatabase = {
             "Clear": [
                 { q: "Even for me life had its gleams of <strong>sunshine</strong>.", a: "<em>Jane Eyre</em>, Charlotte Brontë", icon: "☀️" },
-                { q: "Some people seemed to get all <strong>sunshine</strong>, and some all shadow.", a: "<em>Little Women</em>, Louisa May Alcott", icon: "☀️" },
-                { q: "The pleasantest manner of spending a hot July day was lying from morning to evening... and the blue sky and bright sun shining steadily and <strong>cloudlessly</strong>.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☀️" },
-                { q: "The sky was <strong>perfectly clear</strong>, and the stars were shining with a brilliance.", a: "<em>Frankenstein</em>, Mary Shelley", icon: "☀️" }
+                { q: "Some people seemed to get all <strong>sunshine</strong>, and some all shadow.", a: "<em>Little Women</em>, Louisa May Alcott", icon: "☀️" }
             ],
             "PartlyCloudy": [
                 { q: "A <strong>few clouds</strong> floated in a sky otherwise perfectly blue.", a: "<em>The Awakening</em>, Kate Chopin", icon: "🌤️" },
-                { q: "The sky was blue, with a <strong>few light clouds</strong> like feathers.", a: "<em>Sons and Lovers</em>, D.H. Lawrence", icon: "🌤️" },
-                { q: "There were <strong>faint clouds</strong> floating in the sky, but the sun shone through them.", a: "<em>The Portrait of a Lady</em>, Henry James", icon: "🌤️" },
-                { q: "The sky was a pale, clear blue, with only a <strong>few white clouds</strong> drifting across it.", a: "<em>The House of Mirth</em>, Edith Wharton", icon: "🌤️" }
+                { q: "The sky was blue, with a <strong>few light clouds</strong> like feathers.", a: "<em>Sons and Lovers</em>, D.H. Lawrence", icon: "🌤️" }
             ],
             "MostlyCloudy": [
                 { q: "The sky was <strong>heavy with clouds</strong>, moving rapidly across the moon.", a: "<em>Dracula</em>, Bram Stoker", icon: "⛅" },
-                { q: "The sky was <strong>mostly overcast with clouds</strong>, though now and then a shaft of light broke through.", a: "<em>The Return of the Native</em>, Thomas Hardy", icon: "⛅" },
-                { q: "Great <strong>piles of clouds</strong> floated in the sky, obscuring the sun for long intervals.", a: "<em>The Mayor of Casterbridge</em>, Thomas Hardy", icon: "⛅" },
-                { q: "The sky was filled with <strong>masses of dark clouds</strong>, drifting before the wind.", a: "<em>The Sea-Wolf</em>, Jack London", icon: "⛅" }
+                { q: "The sky was <strong>mostly overcast with clouds</strong>, though now and then a shaft of light broke through.", a: "<em>The Return of the Native</em>, Thomas Hardy", icon: "⛅" }
             ],
             "Overcast": [
                 { q: "In every <strong>cloud</strong>, in every tree—filling the air at night... I am surrounded with her image!", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☁️" },
-                { q: "I wandered lonely as a <strong>cloud</strong> that floats on high o'er vales and hills.", a: "<em>I Wandered Lonely as a Cloud</em>, William Wordsworth", icon: "☁️" },
-                { q: "There was a star riding through <strong>clouds</strong> one night, & I said to the star, 'Consume me'.", a: "<em>The Waves</em>, Virginia Woolf", icon: "☁️" },
-                { q: "Be comforted, dear soul! There is always light behind the <strong>clouds</strong>.", a: "<em>Little Women</em>, Louisa May Alcott", icon: "☁️" }
+                { q: "I wandered lonely as a <strong>cloud</strong> that floats on high o'er vales and hills.", a: "<em>I Wandered Lonely as a Cloud</em>, William Wordsworth", icon: "☁️" }
             ],
             "Rain": [
                 { q: "The <strong>rain</strong> continued to fall steadily.", a: "<em>A Farewell to Arms</em>, Ernest Hemingway", icon: "🌧️" },
-                { q: "The sun did not shine. It was <strong>too wet</strong> to play. So we sat in the house.", a: "<em>The Cat in the Hat</em>, Dr. Seuss", icon: "🌧️" },
-                { q: "The summer sun was not meant for boys like me. Boys like me belonged to the <strong>rain</strong>.", a: "<em>Aristotle and Dante Discover the Secrets of the Universe</em>, Benjamin Alire Sáenz", icon: "🌧️" },
                 { q: "The <strong>rain</strong> pattered dismally against the panes.", a: "<em>Frankenstein</em>, Mary Shelley", icon: "🌧️" }
             ],
             "Snow": [
                 { q: "A <strong>snowball</strong> in the face is surely the perfect beginning to a lasting friendship.", a: "<em>The Book Thief</em>, Markus Zusak", icon: "❄️" },
-                { q: "In the falling quiet there was no sky or earth, only <strong>snow</strong> lifting in the wind...", a: "<em>Miriam</em>, Truman Capote", icon: "❄️" },
-                { q: "Outside, <strong>snow</strong> solidified itself into graceful forms. The peace of winter stars seemed permanent.", a: "<em>Beloved</em>, Toni Morrison", icon: "❄️" },
-                { q: "I wonder if the <strong>snow</strong> loves the trees and fields, that it kisses them so gently?", a: "<em>Through the Looking-Glass</em>, Lewis Carroll", icon: "❄️" }
+                { q: "In the falling quiet there was no sky or earth, only <strong>snow</strong> lifting in the wind...", a: "<em>Miriam</em>, Truman Capote", icon: "❄️" }
             ],
             "Shower": [
-                { q: "A sudden <strong>shower</strong> came on, and they were all soaked through.", a: "<em>The Wind in the Willows</em>, Kenneth Grahame", icon: "🌦️" },
-                { q: "The heavy <strong>rain showers</strong> fell in sudden sheets, then stopped just as quickly.", a: "<em>The Old Man and the Sea</em>, Ernest Hemingway", icon: "🌦️" },
-                { q: "A passing <strong>shower</strong> drove them for shelter into a thicket of trees.", a: "<em>Sense and Sensibility</em>, Jane Austen", icon: "🌦️" },
-                { q: "The afternoon brought a sudden, fierce <strong>shower</strong> of rain that cleared the heavy air.", a: "<em>The Great Gatsby</em>, F. Scott Fitzgerald", icon: "🌦️" }
+                { q: "A sudden <strong>shower</strong> came on, and they were all soaked through.", a: "<em>The Wind in the Willows</em>, Kenneth Grahame", icon: "🌦️" }
             ],
             "Drizzle": [
-                { q: "A fine, cold <strong>drizzle</strong> was falling, blurring the outlines of the houses.", a: "<em>The Picture of Dorian Gray</em>, Oscar Wilde", icon: "🌫️" },
-                { q: "The day began with a dismal <strong>drizzle</strong>, which showed no signs of clearing.", a: "<em>Mansfield Park</em>, Jane Austen", icon: "🌫️" },
-                { q: "It was a cold, grey afternoon, with a dull <strong>drizzle</strong> that soaked everything.", a: "<em>Bleak House</em>, Charles Dickens", icon: "🌫️" },
-                { q: "The morning was cold and wet, with a thick <strong>drizzle</strong> falling from a leaden sky.", a: "<em>Jane Eyre</em>, Charlotte Brontë", icon: "🌫️" }
+                { q: "A fine, cold <strong>drizzle</strong> was falling, blurring the outlines of the houses.", a: "<em>The Picture of Dorian Gray</em>, Oscar Wilde", icon: "🌫️" }
             ],
             "Sleet": [
-                { q: "The wind blew cold, and a driving <strong>sleet</strong> began to fall, freezing as it touched the ground.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🌨️" },
-                { q: "Rain and <strong>sleet</strong> fell continuously, turning the streets into a mire of slush.", a: "<em>David Copperfield</em>, Charles Dickens", icon: "🌨️" },
-                { q: "The weather was wretched, a mixture of rain, <strong>sleet</strong>, and snow that chilled them to the bone.", a: "<em>The Pickwick Papers</em>, Charles Dickens", icon: "🌨️" },
-                { q: "A sharp <strong>sleet</strong> rattled against the window-panes, driven by a furious gale.", a: "<em>Jane Eyre</em>, Charlotte Brontë", icon: "🌨️" }
+                { q: "The wind blew cold, and a driving <strong>sleet</strong> began to fall, freezing as it touched the ground.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🌨️" }
             ],
             "Hail": [
-                { q: "The <strong>hail</strong> rattled on the roof, making such a noise that they could hardly hear each other speak.", a: "<em>The Secret Garden</em>, Frances Hodgson Burnett", icon: "☄️" },
-                { q: "A storm of <strong>hail</strong> and rain came down with incredible violence upon the landscape.", a: "<em>Gulliver's Travels</em>, Jonathan Swift", icon: "☄️" },
-                { q: "The sky grew black, and stones of <strong>hail</strong> began to fall as large as walnuts.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "☄️" },
-                { q: "A fierce gust of wind brought a shower of <strong>hail</strong> that stung their faces.", a: "<em>Treasure Island</em>, Robert Louis Stevenson", icon: "☄️" }
+                { q: "The <strong>hail</strong> rattled on the roof, making such a noise that they could hardly hear each other speak.", a: "<em>The Secret Garden</em>, Frances Hodgson Burnett", icon: "☄️" }
             ],
             "HeavyRain": [
-                { q: "The <strong>torrential rain</strong> fell in a solid wall, erasing the line between earth and sky.", a: "<em>One Hundred Years of Solitude</em>, Gabriel García Márquez", icon: "🌊" },
-                { q: "It was a dark and stormy night, and the <strong>heavy downpour</strong> beat mercilessly against the roof.", a: "<em>Paul Clifford</em>, Edward Bulwer-Lytton", icon: "🌊" },
-                { q: "The <strong>heavy rain</strong> fell like a sheet of gray water, flooding the narrow tracks.", a: "<em>Heart of Darkness</em>, Joseph Conrad", icon: "🌊" },
-                { q: "The <strong>rainy night</strong> had ushered in a misty morning—half frost, half drizzle—and temporary brooks crossed our path...", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "🌊" }
+                { q: "The <strong>torrential rain</strong> fell in a solid wall, erasing the line between earth and sky.", a: "<em>One Hundred Years of Solitude</em>, Gabriel García Márquez", icon: "🌊" }
             ],
             "HeavySnow": [
-                { q: "The day she was buried there came a fall of <strong>snow</strong>; it blew bleak as snow.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☃️" },
-                { q: "The <strong>heavy snowstorm</strong> buried everything under a thick, white shroud, obliterating all tracks.", a: "<em>The Call of the Wild</em>, Jack London", icon: "☃️" },
-                { q: "A <strong>blizzard</strong> raged outside, the snow drifting into massive banks against the door.", a: "<em>Little House on the Prairie</em>, Laura Ingalls Wilder", icon: "☃️" },
-                { q: "The <strong>snow fell so heavily</strong> that it was impossible to see more than a few feet ahead.", a: "<em>Frankenstein</em>, Mary Shelley", icon: "☃️" }
+                { q: "The day she was buried there came a fall of <strong>snow</strong>; it blew bleak as snow.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☃️" }
             ],
             "StrongWind": [
-                { q: "The <strong>wind was howling</strong> through the trees, shaking the very foundations of the house.", a: "<em>Dracula</em>, Bram Stoker", icon: "💨" },
-                { q: "A <strong>furious gale</strong> arose, tearing away the sails and leaving the ship at the mercy of the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "💨" },
-                { q: "The <strong>strong wind</strong> blew with such violence that it was difficult to stand upright.", a: "<em>Gulliver's Travels</em>, Jonathan Swift", icon: "💨" },
-                { q: "The <strong>wind roared</strong> past the cabin, a great, invisible beast shaking the timbers.", a: "<em>The Call of the Wild</em>, Jack London", icon: "💨" }
+                { q: "The <strong>wind was howling</strong> through the trees, shaking the very foundations of the house.", a: "<em>Dracula</em>, Bram Stoker", icon: "💨" }
             ],
             "RoughSeas": [
-                { q: "The <strong>sea ran mountains high</strong>, and we expected every moment to be swallowed up by the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "⚓" },
-                { q: "Huge <strong>waves broke over the deck</strong>, washing away everything that was not lashed down.", a: "<em>Treasure Island</em>, Robert Louis Stevenson", icon: "⚓" },
-                { q: "The <strong>ocean was lashed into fury</strong> by the storm, the waves crashing against the rocky cliffs.", a: "<em>The Sea-Wolf</em>, Jack London", icon: "⚓" },
-                { q: "The ship labored in a <strong>heavy sea</strong>, tossed like a cork upon the giant waves.", a: "<em>Moby-Dick</em>, Herman Melville", icon: "⚓" }
+                { q: "The <strong>sea ran mountains high</strong>, and we expected every moment to be swallowed up by the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "⚓" }
             ],
             "Dry": [
-                { q: "The land was <strong>parched and dry</strong>, the grass turned to a dusty brown under the pitiless sun.", a: "<em>The Grapes of Wrath</em>, John Steinbeck", icon: "🏜️" },
-                { q: "An intense, <strong>arid heat</strong> filled the air, drying up the last remaining pools of water.", a: "<em>Dune</em>, Frank Herbert", icon: "🏜️" },
-                { q: "The earth was cracked with the <strong>long drought</strong>, crying out for a single drop of rain.", a: "<em>The Good Earth</em>, Pearl S. Buck", icon: "🏜️" },
-                { q: "Everything was <strong>bone-dry</strong>, and the slightest spark could set the entire forest ablaze.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🏜️" }
+                { q: "The land was <strong>parched and dry</strong>, the grass turned to a dusty brown under the pitiless sun.", a: "<em>The Grapes of Wrath</em>, John Steinbeck", icon: "🏜️" }
             ],
             "Typhoon": [
-                { q: "The fury of the <strong>typhoon</strong> was like the wrath of an angry god, lashed by wind and water.", a: "<em>Typhoon</em>, Joseph Conrad", icon: "🌀" },
-                { q: "A <strong>hurricane</strong> of unimaginable fury swept over the land, destroying everything in its path.", a: "<em>The Wonderful Wizard of Oz</em>, L. Frank Baum", icon: "🌀" },
-                { q: "The <strong>typhoon roared</strong> across the ocean, a massive swirling wall of destruction.", a: "<em>Typhoon</em>, Joseph Conrad", icon: "🌀" },
-                { q: "It was a <strong>cyclone</strong>, and the wind shrieked as it lifted the house into the air.", a: "<em>The Wonderful Wizard of Oz</em>, L. Frank Baum", icon: "🌀" }
+                { q: "The fury of the <strong>typhoon</strong> was like the wrath of an angry god, lashed by wind and water.", a: "<em>Typhoon</em>, Joseph Conrad", icon: "🌀" }
             ],
             "Heatwave": [
-                { q: "It was a <strong>blazing hot day</strong> in August, and the city felt like an oven.", a: "<em>The Bell Jar</em>, Sylvia Plath", icon: "🥵" },
-                { q: "The <strong>heatwave</strong> held the city in its grip, making the air thick and almost impossible to breathe.", a: "<em>The Great Gatsby</em>, F. Scott Fitzgerald", icon: "🥵" },
-                { q: "The sun beat down with a <strong>scorching heat</strong>, withering the leaves on the trees.", a: "<em>The Red Badge of Courage</em>, Stephen Crane", icon: "🥵" },
-                { q: "The <strong>intolerable heat</strong> of the summer sun made the stone walls burn to the touch.", a: "<em>A Tale of Two Cities</em>, Charles Dickens", icon: "🥵" }
+                { q: "It was a <strong>blazing hot day</strong> in August, and the city felt like an oven.", a: "<em>The Bell Jar</em>, Sylvia Plath", icon: "🥵" }
             ],
             "ColdWave": [
-                { q: "The <strong>bitter cold</strong> penetrated through their thickest garments, freezing their breath into ice.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🥶" },
-                { q: "It was an <strong>intense frost</strong>, the coldest winter that anyone could remember, turning the river to solid ice.", a: "<em>Great Expectations</em>, Charles Dickens", icon: "🥶" },
-                { q: "The <strong>freezing cold</strong> settled over the landscape, a silent killer in the dark winter night.", a: "<em>The Book Thief</em>, Markus Zusak", icon: "🥶" },
-                { q: "The air was so <strong>bitterly cold</strong> that it felt like a knife pressing against the skin.", a: "<em>To Build a Fire</em>, Jack London", icon: "🥶" }
+                { q: "The <strong>bitter cold</strong> penetrated through their thickest garments, freezing their breath into ice.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🥶" }
             ]
         };
 
-        async function init() {
+        function init() {
             resetIdleTimer();
             setupEventListeners();
             updateDate();
-            await fetchWeather();
+            fetchWeather();
             checkTimeEngine();
             setInterval(checkTimeEngine, 1000);
             setInterval(fetchWeather, 30 * 60000);
         }
 
         function safeTransitionUpdate(textId, authorId, textHtml, authorHtml) {
-            const txtEl = document.getElementById(textId);
-            const autEl = document.getElementById(authorId);
+            var txtEl = document.getElementById(textId);
+            var autEl = document.getElementById(authorId);
             
             txtEl.style.opacity = 0;
             if(autEl) autEl.style.opacity = 0;
             
-            setTimeout(() => {
+            setTimeout(function() {
                 txtEl.innerHTML = textHtml;
                 if(autEl) autEl.innerHTML = authorHtml;
                 
-                const rawTextLength = txtEl.innerText.length;
-                const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+                var rawTextLength = txtEl.innerText.length;
+                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
                 
                 if (isPortrait) {
                     if (rawTextLength > 100) {
@@ -250,7 +189,7 @@
                 }
                 
                 if (textId === 'weatherQuote') {
-                    const weatherInfoEl = document.querySelector('.weather-info');
+                    var weatherInfoEl = document.querySelector('.weather-info');
                     if (isPortrait) {
                         if (rawTextLength > 80) {
                             weatherInfoEl.style.marginBottom = "12px";
@@ -276,80 +215,111 @@
         }
 
         function updateDate() {
-            const now = new Date();
-            const day = String(now.getDate()).padStart(2, '0');
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            document.getElementById('currentDate').innerText = `${day} ${months[now.getMonth()]} ${now.getFullYear()}`;
+            var now = new Date();
+            var day = String(now.getDate());
+            if(day.length < 2) day = '0' + day;
+            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            document.getElementById('currentDate').innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
         }
 
-        async function fetchWeather() {
-            let lat = 37.5665; let lon = 126.9780; let cityName = "Seoul";
-            try {
-                const locResponse = await fetch("https://ipapi.co/json/");
-                if (locResponse.ok) {
-                    const locData = await locResponse.json();
-                    lat = locData.latitude || lat; lon = locData.longitude || lon; cityName = locData.city || cityName;
+        function fetchWeather() {
+            var lat = 37.5665; 
+            var lon = 126.9780; 
+            var cityName = "Seoul";
+
+            var locXhr = new XMLHttpRequest();
+            locXhr.open("GET", "https://ipapi.co/json/", true);
+            locXhr.onreadystatechange = function() {
+                if (locXhr.readyState === 4) {
+                    if (locXhr.status === 200) {
+                        try {
+                            var locData = JSON.parse(locXhr.responseText);
+                            lat = locData.latitude || lat; 
+                            lon = locData.longitude || lon; 
+                            cityName = locData.city || cityName;
+                        } catch(e) {}
+                    }
+                    getWeatherData(lat, lon, cityName);
                 }
-            } catch (e) { console.log("Location detection failed."); }
+            };
+            locXhr.send();
+        }
 
-            try {
-                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`);
-                if (!response.ok) throw new Error("Offline");
-                const data = await response.json();
-                
-                const temp = Math.round(data.current.temperature_2m);
-                const code = data.current.weather_code;
-                const wind = data.current.wind_speed_10m;
-                const humidity = data.current.relative_humidity_2m;
-                
-                let condition = "Clear";
-                
-                if (temp >= 33) condition = "Heatwave";
-                else if (temp <= -10) condition = "ColdWave";
-                else if (wind >= 50 && (code === 95 || code === 96 || code === 99)) condition = "Typhoon";
-                else if (wind >= 50) condition = "RoughSeas";
-                else if (wind >= 39) condition = "StrongWind";
-                else if (humidity <= 30 && code <= 3) condition = "Dry";
-                else {
-                    if (code === 0) condition = "Clear";
-                    else if (code === 1) condition = "PartlyCloudy";
-                    else if (code === 2) condition = "MostlyCloudy";
-                    else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
-                    else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
-                    else if (code === 61 || code === 63) condition = "Rain";
-                    else if (code === 65) condition = "HeavyRain";
-                    else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
-                    else if (code === 71 || code === 73) condition = "Snow";
-                    else if (code === 75) condition = "HeavySnow";
-                    else if (code === 80 || code === 81) condition = "Shower";
-                    else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
-                    else if (code === 96 || code === 99) condition = "Hail";
+        function getWeatherData(lat, lon, cityName) {
+            var xhr = new XMLHttpRequest();
+            var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m";
+            
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            var temp = Math.round(data.current.temperature_2m);
+                            var code = data.current.weather_code;
+                            var wind = data.current.wind_speed_10m;
+                            var humidity = data.current.relative_humidity_2m;
+                            
+                            var condition = "Clear";
+                            
+                            if (temp >= 33) condition = "Heatwave";
+                            else if (temp <= -10) condition = "ColdWave";
+                            else if (wind >= 50 && (code === 95 || code === 96 || code === 99)) condition = "Typhoon";
+                            else if (wind >= 50) condition = "RoughSeas";
+                            else if (wind >= 39) condition = "StrongWind";
+                            else if (humidity <= 30 && code <= 3) condition = "Dry";
+                            else {
+                                if (code === 0) condition = "Clear";
+                                else if (code === 1) condition = "PartlyCloudy";
+                                else if (code === 2) condition = "MostlyCloudy";
+                                else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
+                                else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
+                                else if (code === 61 || code === 63) condition = "Rain";
+                                else if (code === 65) condition = "HeavyRain";
+                                else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
+                                else if (code === 71 || code === 73) condition = "Snow";
+                                else if (code === 75) condition = "HeavySnow";
+                                else if (code === 80 || code === 81) condition = "Shower";
+                                else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
+                                else if (code === 96 || code === 99) condition = "Hail";
+                            }
+
+                            var quotesList = weatherDatabase[condition];
+                            var match = quotesList[Math.floor(Math.random() * quotesList.length)];
+
+                            document.getElementById('weatherIcon').innerText = match.icon;
+                            document.getElementById('weatherTemp').innerText = temp + "°C";
+                            document.getElementById('cityLabel').innerText = cityName.toUpperCase();
+                            
+                            safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, "- " + match.a);
+                        } catch (e) {
+                            showOfflineWeather();
+                        }
+                    } else {
+                        showOfflineWeather();
+                    }
                 }
+            };
+            xhr.send();
+        }
 
-                const quotesList = weatherDatabase[condition];
-                const match = quotesList[Math.floor(Math.random() * quotesList.length)];
-
-                document.getElementById('weatherIcon').innerText = match.icon;
-                document.getElementById('weatherTemp').innerText = `${temp}°C`;
-                document.getElementById('cityLabel').innerText = cityName.toUpperCase();
-                
-                safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, `- ${match.a}`);
-            } catch (error) {
-                safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
-                    "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
-                    "- The Offline Chronicler"
-                );
-                document.getElementById('weatherIcon').innerText = "🌐";
-                document.getElementById('weatherTemp').innerText = "Offline";
-                document.getElementById('cityLabel').innerText = "DISCONNECTED";
-            }
+        function showOfflineWeather() {
+            safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
+                "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
+                "- The Offline Chronicler"
+            );
+            document.getElementById('weatherIcon').innerText = "🌐";
+            document.getElementById('weatherTemp').innerText = "Offline";
+            document.getElementById('cityLabel').innerText = "DISCONNECTED";
         }
 
         function checkTimeEngine() {
-            const now = new Date();
-            let hours = String(now.getHours()).padStart(2, '0');
-            let minutes = String(now.getMinutes()).padStart(2, '0');
-            const currentTimeStr = `${hours}:${minutes}`;
+            var now = new Date();
+            var hours = String(now.getHours());
+            if(hours.length < 2) hours = '0' + hours;
+            var minutes = String(now.getMinutes());
+            if(minutes.length < 2) minutes = '0' + minutes;
+            var currentTimeStr = hours + ":" + minutes;
 
             if (currentTimeStr !== lastTimeStr) {
                 lastTimeStr = currentTimeStr;
@@ -358,67 +328,80 @@
             }
         }
 
-        async function updateClock(hours, minutes) {
-            const fileTimeStr = `${hours}_${minutes}`;
-            try {
-                const response = await fetch(`https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/${fileTimeStr}.json`);
-                if (!response.ok) throw new Error("Fetch failed");
-                const quotesArray = await response.json();
-                
-                if (quotesArray && quotesArray.length > 0) {
-                    const selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
-                    let first = selected.quote_first || "";
-                    let timeCase = selected.quote_time_case || "";
-                    let last = selected.quote_last || "";
-                    
-                    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-                    const maxSideLength = isPortrait ? 55 : 130; 
-                    
-                    const safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
-                    const safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
+        function updateClock(hours, minutes) {
+            var fileTimeStr = hours + "_" + minutes;
+            var xhr = new XMLHttpRequest();
+            var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var quotesArray = JSON.parse(xhr.responseText);
+                            if (quotesArray && quotesArray.length > 0) {
+                                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                                var first = selected.quote_first || "";
+                                var timeCase = selected.quote_time_case || "";
+                                var last = selected.quote_last || "";
+                                
+                                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
+                                var maxSideLength = isPortrait ? 55 : 130; 
+                                
+                                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
+                                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
 
-                    if (first.length > maxSideLength) {
-                        let breakPoint = first.indexOf(' ', first.length - maxSideLength);
-                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? first.length - maxSideLength : breakPoint).trim();
+                                if (first.length > maxSideLength) {
+                                    var breakPoint = first.indexOf(' ', first.length - maxSideLength);
+                                    first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? first.length - maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
+                                }
+                                if (last.length > maxSideLength) {
+                                    var breakPoint = last.lastIndexOf(' ', maxSideLength);
+                                    last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                }
+                                
+                                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
+                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+                                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
+                                
+                                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
+                            } else {
+                                showFallbackTime(hours + ":" + minutes);
+                            }
+                        } catch (e) {
+                            showFallbackTime(hours + ":" + minutes);
+                        }
+                    } else {
+                        showFallbackTime(hours + ":" + minutes);
                     }
-                    if (last.length > maxSideLength) {
-                        let breakPoint = last.lastIndexOf(' ', maxSideLength);
-                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).trim() + safeEllipsisHtml;
-                    }
-                    
-                    let displayQuote = `${first} <strong>${timeCase}</strong> ${last}`;
-                    displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                               .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
-                                               .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
-                    
-                    safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, `- <em>${selected.title}</em>, ${selected.author}`);
-                } else {
-                    showFallbackTime(`${hours}:${minutes}`);
                 }
-            } catch (error) {
-                showFallbackTime(`${hours}:${minutes}`);
-            }
+            };
+            xhr.send();
         }
 
         function showFallbackTime(timeStr) {
             safeTransitionUpdate('clockQuote', 'clockAuthor', 
-                `The clock hands quietly moved to <strong>${timeStr}</strong> . . . waiting for the next story.`, 
+                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
                 "- Unknown Timekeeper"
             );
         }
 
         function setupEventListeners() {
-            document.body.addEventListener('touchstart', resetIdleTimer);
-            document.body.addEventListener('mousemove', resetIdleTimer);
-            document.body.addEventListener('click', resetIdleTimer);
+            document.body.addEventListener('touchstart', resetIdleTimer, false);
+            document.body.addEventListener('mousemove', resetIdleTimer, false);
+            document.body.addEventListener('click', resetIdleTimer, false);
             
-            window.addEventListener('resize', () => { lastTimeStr = ""; checkTimeEngine(); });
+            window.addEventListener('resize', function() { 
+                lastTimeStr = ""; 
+                checkTimeEngine(); 
+            }, false);
         }
 
         function resetIdleTimer() {
             clearTimeout(idleTimer);
             if (document.getElementById('screensaverOverlay').style.display !== 'block') {
-                idleTimer = setTimeout(() => {
+                idleTimer = setTimeout(function() {
                     document.getElementById('screensaverOverlay').style.display = 'block';
                 }, idleLimit);
             }
@@ -427,8 +410,12 @@
         function wakeUp() {
             document.getElementById('screensaverOverlay').style.display = 'none';
             resetIdleTimer();
-            const now = new Date();
-            updateClock(String(now.getHours()).padStart(2, '0'), String(now.getMinutes()).padStart(2, '0'));
+            var now = new Date();
+            var h = String(now.getHours());
+            if(h.length < 2) h = '0' + h;
+            var m = String(now.getMinutes());
+            if(m.length < 2) m = '0' + m;
+            updateClock(h, m);
         }
 
         window.onload = init;
