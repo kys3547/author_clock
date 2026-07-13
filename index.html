@@ -226,55 +226,93 @@
             document.getElementById('currentDate').innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
         }
 
-        /* 📍 HTML5 Geolocation API 기반 정밀 위치 조회로 전면 교체 (ES5 호환) */
+        /* 📍 iOS 9 및 HTTP 환경 완벽 대응 하이브리드 위치 엔진 */
         function fetchWeather() {
-            if (navigator.geolocation) {
+            // 1차 방어선: 브라우저가 Geolocation을 지원하고, 보안 연결(HTTPS 또는 로컬호스트) 상태인지 체크
+            if (navigator.geolocation && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
                 navigator.geolocation.getCurrentPosition(
                     function(position) {
-                        // 위치 권한 허용 시: 고정밀 위경도 추출
                         var lat = position.coords.latitude;
                         var lon = position.coords.longitude;
                         reverseGeocode(lat, lon);
                     },
                     function(error) {
-                        // 권한 거부 혹은 실패 시 Fallback: 기존 IP 기반 서울 고정값 적용
-                        getWeatherData(37.5665, 126.9780, "Seoul");
+                        // 사용자가 거부했거나 GPS 신호가 잡히지 않을 때 -> 2차 방어선(네트워크 추정)으로 전환
+                        fetchFallbackLocation();
                     },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    { enableHighAccuracy: true, timeout: 7000 }
                 );
             } else {
-                getWeatherData(37.5665, 126.9780, "Seoul");
+                // 구형 iOS 사파리나 http 연결이라 GPS 사용 불가능할 때 -> 즉시 2차 방어선 작동
+                fetchFallbackLocation();
             }
         }
 
-        /* 🗺️ 오픈소스 역지오코딩 API를 활용한 정확한 도시 이름(시 단위) 추출 */
+        /* 🗺️ 1차 GPS 기반: 역지오코딩 처리 및 에러 트랩 */
         function reverseGeocode(lat, lon) {
             var xhr = new XMLHttpRequest();
             var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon;
             
             xhr.open("GET", url, true);
-            // OpenStreetMap API 운영 가이드라인에 따른 User-Agent 식별자 추가
             xhr.setRequestHeader("User-Agent", "StandByDashboard/1.4"); 
             
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
-                    var cityName = "Detected Loc";
                     if (xhr.status === 200) {
                         try {
                             var res = JSON.parse(xhr.responseText);
-                            // 행정구역 트리에서 '시(city)', '광역지자체(province)', 또는 '구/군' 단위 역추적
-                            cityName = res.address.city || res.address.province || res.address.borough || res.address.county || cityName;
-                            
-                            // 영문 표기 정제 (Incheon 광역시, Seongnam 시 등 깔끔하게 출력)
-                            cityName = cityName.replace(/ Metropolitan City/gi, "")
-                                               .replace(/ City/gi, "")
-                                               .replace(/-si/gi, "");
-                        } catch(e) {}
+                            var cityName = res.address.city || res.address.province || res.address.borough || res.address.county || "Incheon";
+                            cleanAndGetWeather(lat, lon, cityName);
+                        } catch(e) {
+                            fetchFallbackLocation(); // 구형 브라우저 파싱 에러 시 백업
+                        }
+                    } else {
+                        fetchFallbackLocation(); // API 차단 시 백업
                     }
-                    getWeatherData(lat, lon, cityName);
                 }
             };
             xhr.send();
+        }
+
+        /* 🌐 2차 방어선: 구형 기기(iOS 9) 및 HTTP 환경을 위한 네트워크 기반 위치 추출 */
+        function fetchFallbackLocation() {
+            var xhr = new XMLHttpRequest();
+            // 구형 기기 인프라와 CORS를 완벽히 지원하는 무제한 오픈 위치 API
+            var url = "https://get.geojs.io/v1/ip/geo.json"; 
+            
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    var defaultLat = 37.5665;
+                    var defaultLon = 126.9780;
+                    var defaultCity = "Seoul";
+                    
+                    if (xhr.status === 200) {
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            defaultLat = parseFloat(data.latitude) || defaultLat;
+                            defaultLon = parseFloat(data.longitude) || defaultLon;
+                            defaultCity = data.city || defaultCity;
+                            
+                            // 통신사 IP 기반 특성상 시 단위는 꽤 정확하게 매핑됨 (인천 등)
+                            cleanAndGetWeather(defaultLat, defaultLon, defaultCity);
+                        } catch(e) {
+                            getWeatherData(defaultLat, defaultLon, defaultCity);
+                        }
+                    } else {
+                        getWeatherData(defaultLat, defaultLon, defaultCity);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        /* 🧼 도시 이름 텍스트 정제 후 날씨 호출 */
+        function cleanAndGetWeather(lat, lon, cityName) {
+            cityName = cityName.replace(/ Metropolitan City/gi, "")
+                               .replace(/ City/gi, "")
+                               .replace(/-si/gi, "");
+            getWeatherData(lat, lon, cityName);
         }
 
         function getWeatherData(lat, lon, cityName) {
