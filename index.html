@@ -40,15 +40,14 @@
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         
-        /* [중요 수정] iOS 9 WebKit 렌더러가 이모지 폰트 스케일을 제한하는 버그 방어 조치 */
         #weatherIcon { 
-            font-size: 72px !important; /* 구형 기기가 완전하게 식별하도록 절대단위 px 강제 설정 */
+            font-size: 72px !important; 
             line-height: 1; 
             margin-right: 18px; 
             display: inline-block !important;
             -webkit-flex-shrink: 0;
             flex-shrink: 0;
-            font-family: "Apple Color Emoji", "AppleColorEmoji", sans-serif !important; /* 구형 WebKit에 스케일 가능 컬러 이모지 전용 서체 명시 */
+            font-family: "Apple Color Emoji", "AppleColorEmoji", sans-serif !important; 
         }
         
         .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
@@ -56,7 +55,6 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
-        /* 화면 우측 하단 저대비 버전 레이블 */
         .version-label {
             position: absolute;
             bottom: 15px;
@@ -76,7 +74,6 @@
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             
             .weather-info { margin-bottom: 20px; }
-            /* 포트레이트 환경에서도 고정 물리 스케일링 지정 */
             #weatherIcon { font-size: 60px !important; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block !important; }
             .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
@@ -87,8 +84,8 @@
 </head>
 <body>
 
-    <!-- 우측 하단 버전 레이블 (자동 업데이트 반영) -->
-    <div class="version-label">v34</div>
+    <!-- 우측 하단 버전 레이블 (자동 갱신) -->
+    <div class="version-label">v35</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -198,7 +195,7 @@
             var txtEl = document.getElementById(textId);
             var autEl = document.getElementById(authorId);
             
-            if (!txtEl) return; // 요소 누락 시 에러 전파 방지
+            if (!txtEl) return; 
             
             txtEl.style.opacity = 0;
             if(autEl) autEl.style.opacity = 0;
@@ -499,7 +496,7 @@
                                         last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
                                     } else {
                                         var breakPoint = subLast.lastIndexOf(' ');
-                                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '')
+                                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
                                         last = slicedLast + safeEllipsisHtml;
                                     }
                                 }
@@ -534,39 +531,4 @@
         // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 (항상 활성화) ---
         var wakeLock = null;
         var legacyVideo = null; 
-        var legacyAudio = null; // 구형 iOS Standalone/PWA의 강제 슬립을 원천 차단하기 위한 오디오 스트림 인스턴스
-        var legacyIframe = null; 
-        var legacyTimer = null; 
-
-        // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 미디어 구동 함수
-        function enableLegacyAOD() {
-            // 1. [핵심 추가] 백그라운드 무음 오디오 루프 스트림 기동
-            // iOS 9 Standalone 웹앱 샌드박스는 오직 오디오 세션(Audio Session)이 유지될 때에만 
-            // 단말의 잠금 장치 및 자바스크립트 스레드를 동결하지 않고 완전히 작동 상태로 인계합니다.
-            if (!legacyAudio) {
-                legacyAudio = document.createElement('audio');
-                legacyAudio.setAttribute('title', 'AOD Standby Audio');
-                legacyAudio.setAttribute('loop', '');
-                legacyAudio.setAttribute('autoplay', '');
-                legacyAudio.style.display = 'none';
-                
-                // 1초 분량의 완전한 무음 WAV 데이터 (base64)
-                legacyAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
-                document.body.appendChild(legacyAudio);
-            }
-
-            var audioPlayPromise = legacyAudio.play();
-            if (audioPlayPromise && typeof audioPlayPromise.then === 'function') {
-                audioPlayPromise.then(function() {
-                    // 무음 오디오 세션 기동 성공
-                }).catch(function(e) {
-                    if (window.console) console.log("Legacy Audio Play Error:", e);
-                });
-            } else {
-                legacyAudio.play();
-            }
-
-            // 2. 비디오 루프 기법 가동 (iOS 10 이상 및 일반 뷰포트 내 강제 구동용)
-            if (!legacyVideo) {
-                legacyVideo = document.createElement('video');
-                legacyVideo.setAttribute('title', 'AOD Stan
+        var lega
