@@ -563,14 +563,66 @@
             );
         }
 
-        // --- 안전 장치가 추가된 setupAOD 함수 ---
+        // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 ---
         var wakeLock = null;
+        var legacyVideo = null; // iOS 9 이하 구형 기기를 위한 전역 비디오 인스턴스
+
+        // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 비디오 구동 함수
+        function enableLegacyAOD() {
+            if (!legacyVideo) {
+                legacyVideo = document.createElement('video');
+                legacyVideo.setAttribute('title', 'AOD Standby');
+                legacyVideo.setAttribute('playsinline', '');
+                legacyVideo.setAttribute('webkit-playsinline', ''); // iOS 9 이하 구형 기기 맞춤 속성 (필수)
+                legacyVideo.setAttribute('loop', '');
+                legacyVideo.setAttribute('muted', '');
+                legacyVideo.muted = true; // 음소거가 확실히 되어 있어야 정책 상 자동 백그라운드 재생 허용됨
+                
+                // 화면 한 구석에 아주 작고 투명하게 숨겨 배치
+                legacyVideo.style.position = 'absolute';
+                legacyVideo.style.width = '1px';
+                legacyVideo.style.height = '1px';
+                legacyVideo.style.top = '0';
+                legacyVideo.style.left = '0';
+                legacyVideo.style.opacity = '0.01';
+                legacyVideo.style.pointerEvents = 'none';
+                
+                var source = document.createElement('source');
+                // 1프레임짜리 극소용량 무음 블랙 비디오 (base64)
+                source.src = 'data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAG21kYXQAAAGzABAHAAABthABGWAAAAABAAA2Z2VzZHMAAAAAAQABAAEAAAA2YXZjMQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAc3R0cwAAAAAAAAABAAAAAQABAAABAAAAHHN0c2QAAAAAAAAAAQAAAFhzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAABoc3RzegAAAAAAAAAAAAAAAQAAAAEAAAAUc3RjbwAAAAAAAAABAAAAMAAAAGB1ZHRhAAAAWG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAAK2lsc3QAAAAjqXRvbwAAABtkYXRhAAAAAQAAAABMYXZmYzgxLjEyLjEwMA==';
+                source.type = 'video/mp4';
+                legacyVideo.appendChild(source);
+                document.body.appendChild(legacyVideo);
+            }
+            
+            // 사용자 동작 핸들러 내에서 호출되므로 정상 재생됩니다.
+            var playPromise = legacyVideo.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+                playPromise.then(function() {
+                    // 재생 성공
+                }).catch(function(e) {
+                    if (window.console) console.log("Legacy AOD Play Error:", e);
+                });
+            } else {
+                // 구형 Safari에서 play()가 Promise를 반환하지 않을 경우를 대비한 구문
+                legacyVideo.play();
+            }
+        }
+
+        function disableLegacyAOD() {
+            if (legacyVideo) {
+                try {
+                    legacyVideo.pause();
+                } catch (e) {
+                    // 무시
+                }
+            }
+        }
 
         function setupAOD() {
             var aodToggle = document.getElementById('aodToggle');
             var aodLabel = document.getElementById('aodLabel');
 
-            // DOM 요소를 찾을 수 없으면 다른 정상 기능의 붕괴를 막기 위해 함수를 즉시 빠져나갑니다.
             if (!aodToggle || !aodLabel) {
                 return;
             }
@@ -578,10 +630,10 @@
             aodToggle.addEventListener('change', function() {
                 var self = this;
                 if (self.checked) {
+                    // 1. 현대적인 브라우저라면 Wake Lock API 시도
                     if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
                         try {
                             var requestPromise = navigator.wakeLock.request('screen');
-                            // 반환값이 올바른 Promise인지 유효성 검사 후 체이닝
                             if (requestPromise && typeof requestPromise.then === 'function') {
                                 requestPromise
                                     .then(function(lock) {
@@ -590,22 +642,35 @@
                                         aodLabel.style.color = "#81c784"; 
                                     })
                                     .catch(function(err) {
-                                        aodLabel.textContent = "AOD ERROR";
-                                        self.checked = false;
+                                        // 현대적 API 실패 시, 비디오 기반 레거시 우회 기법으로 즉시 폴백
+                                        enableLegacyAOD();
+                                        aodLabel.textContent = "AOD ON";
+                                        aodLabel.style.color = "#81c784";
                                     });
                             } else {
-                                aodLabel.textContent = "AOD ON (Not Supported)";
-                                aodLabel.style.color = "#e57373";
+                                enableLegacyAOD();
+                                aodLabel.textContent = "AOD ON";
+                                aodLabel.style.color = "#81c784";
                             }
                         } catch (err) {
-                            aodLabel.textContent = "AOD ERROR";
-                            self.checked = false;
+                            enableLegacyAOD();
+                            aodLabel.textContent = "AOD ON";
+                            aodLabel.style.color = "#81c784";
                         }
                     } else {
-                        aodLabel.textContent = "AOD ON (Not Supported)";
-                        aodLabel.style.color = "#e57373";
+                        // 2. 구형 아이패드(iOS 9) 등 API 미지원 환경에서는 무음 비디오 트릭으로 직행
+                        try {
+                            enableLegacyAOD();
+                            aodLabel.textContent = "AOD ON";
+                            aodLabel.style.color = "#81c784";
+                        } catch (err) {
+                            aodLabel.textContent = "AOD ERROR";
+                            aodLabel.style.color = "#e57373";
+                            self.checked = false;
+                        }
                     }
                 } else {
+                    // 스위치 해제 시 전체 잠금 해제
                     if (wakeLock !== null) {
                         try {
                             var releasePromise = wakeLock.release();
@@ -620,35 +685,42 @@
                             wakeLock = null;
                         }
                     }
+                    // 무음 백그라운드 영상도 중단시킵니다.
+                    disableLegacyAOD();
                     aodLabel.textContent = "AOD OFF";
                     aodLabel.style.color = "#888";
                 }
             });
 
+            // 화면 가시성이 돌아왔을 때 재생 복원
             document.addEventListener('visibilitychange', function() {
-                if (wakeLock !== null && document.visibilityState === 'visible') {
-                    if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
-                        try {
-                            var resumePromise = navigator.wakeLock.request('screen');
-                            if (resumePromise && typeof resumePromise.then === 'function') {
-                                resumePromise
-                                    .then(function(lock) {
-                                        wakeLock = lock;
-                                    })
-                                    .catch(function() {
-                                        // 예외 조용히 격리
-                                    });
+                if (aodToggle.checked) {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
+                            try {
+                                var resumePromise = navigator.wakeLock.request('screen');
+                                if (resumePromise && typeof resumePromise.then === 'function') {
+                                    resumePromise
+                                        .then(function(lock) {
+                                            wakeLock = lock;
+                                        })
+                                        .catch(function() {
+                                            enableLegacyAOD();
+                                        });
+                                }
+                            } catch (err) {
+                                enableLegacyAOD();
                             }
-                        } catch (err) {
-                            // 예외 조용히 격리
                         }
+                    } else if (document.visibilityState === 'visible') {
+                        // 구형 장비 탭 전환 후 돌아올 때 비디오 자동 재가동
+                        enableLegacyAOD();
                     }
                 }
             });
         }
 
         // --- 초기화 안정 실행 로직 ---
-        // 한쪽 기능이 실패해도 대시보드가 구동할 수 있도록 실행 영역을 안전하게 분리합니다.
         function safeRun() {
             try {
                 init();
@@ -663,7 +735,6 @@
             }
         }
 
-        // window.onload 대신 브라우저 분석이 끝나자마자 화면을 띄우는 이벤트를 활용합니다.
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", safeRun);
         } else {
