@@ -55,6 +55,29 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
+        /* 저대비 새로고침 버튼 스타일 정의 */
+        .refresh-btn {
+            position: absolute;
+            top: 40px;
+            right: 50px;
+            cursor: pointer;
+            color: #222;
+            opacity: 0.6;
+            -webkit-transition: opacity 0.2s, color 0.2s;
+            transition: opacity 0.2s, color 0.2s;
+            z-index: 1001;
+            display: -webkit-flex; display: flex;
+            -webkit-align-items: center; align-items: center;
+            -webkit-justify-content: center; justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        .refresh-btn:hover {
+            color: #555;
+            opacity: 1;
+        }
+
         .version-label {
             position: absolute;
             bottom: 15px;
@@ -79,13 +102,26 @@
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
             
             .quote-author { font-size: 1.1rem; margin-top: 8px; }
+
+            .refresh-btn {
+                top: 30px;
+                right: 40px;
+            }
         }
     </style>
 </head>
 <body>
 
+    <!-- 디자인 새로고침 버튼 (대칭 레이아웃) -->
+    <div class="refresh-btn" id="refreshBtn" onclick="forceReload()">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+    </div>
+
     <!-- 우측 하단 버전 레이블 (자동 갱신) -->
-    <div class="version-label">v35</div>
+    <div class="version-label">v36</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -178,6 +214,16 @@
             setInterval(checkTimeEngine, 1000);
             setInterval(fetchWeather, 30 * 60000);
             setInterval(applyBurnInProtection, 60000); 
+        }
+
+        // 캐시 극복용 가상 새로고침 래퍼 함수
+        function forceReload() {
+            try {
+                var currentUrl = window.location.href.split('?')[0].split('#')[0];
+                window.location.replace(currentUrl + '?r=' + new Date().getTime());
+            } catch(e) {
+                window.location.reload(true);
+            }
         }
 
         function applyBurnInProtection() {
@@ -293,7 +339,9 @@
             var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon;
             
             xhr.open("GET", url, true);
-            xhr.setRequestHeader("User-Agent", "StandByDashboard/1.5"); 
+            
+            // [버그 수정 완료] setRequestHeader로 'User-Agent'를 명시적으로 조작할 시, 
+            // 윈도우 크롬 및 사파리 보안 규정에 저촉되어 동기식 돔 익셉션이 발생, 스크립트 실행이 중단되는 문제를 전면 차단했습니다.
             
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
@@ -531,4 +579,215 @@
         // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 (항상 활성화) ---
         var wakeLock = null;
         var legacyVideo = null; 
-        var lega
+        var legacyAudio = null; 
+        var legacyIframe = null; 
+        var legacyTimer = null; 
+
+        // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 미디어 구동 함수
+        function enableLegacyAOD() {
+            try {
+                // 1. 백그라운드 무음 오디오 루프 스트림 기동 (iOS 9 Standalone 잠금 회피용)
+                if (!legacyAudio && document.body) {
+                    legacyAudio = document.createElement('audio');
+                    legacyAudio.setAttribute('title', 'AOD Standby Audio');
+                    legacyAudio.setAttribute('loop', '');
+                    legacyAudio.setAttribute('autoplay', '');
+                    legacyAudio.style.display = 'none';
+                    
+                    legacyAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+                    document.body.appendChild(legacyAudio);
+                }
+
+                if (legacyAudio) {
+                    try {
+                        var audioPlayPromise = legacyAudio.play();
+                        if (audioPlayPromise && typeof audioPlayPromise.then === 'function') {
+                            audioPlayPromise.then(function() {
+                                // 무음 세션 성공
+                            }).catch(function(e) {
+                                if (window.console) console.log("Legacy Audio Play Async Error:", e);
+                            });
+                        }
+                    } catch (e) {
+                        if (window.console) console.log("Legacy Audio Play Sync Error:", e);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Audio Setup Error:", err);
+            }
+
+            try {
+                // 2. 비디오 루프 기법 가동 (iOS 10 이상 및 일반 뷰포트 내 강제 구동용)
+                if (!legacyVideo && document.body) {
+                    legacyVideo = document.createElement('video');
+                    legacyVideo.setAttribute('title', 'AOD Standby Video');
+                    legacyVideo.setAttribute('playsinline', '');
+                    legacyVideo.setAttribute('webkit-playsinline', ''); 
+                    legacyVideo.setAttribute('muted', '');
+                    legacyVideo.muted = true; 
+                    
+                    legacyVideo.addEventListener('timeupdate', function() {
+                        if (this.currentTime > 0.5) {
+                            this.currentTime = 0;
+                        }
+                    }, false);
+                    
+                    legacyVideo.addEventListener('ended', function() {
+                        try { this.play(); } catch(e) {}
+                    }, false);
+
+                    legacyVideo.style.position = 'fixed';
+                    legacyVideo.style.width = '10px';
+                    legacyVideo.style.height = '10px';
+                    legacyVideo.style.bottom = '10px';
+                    legacyVideo.style.right = '10px';
+                    legacyVideo.style.opacity = '0.05';
+                    legacyVideo.style.pointerEvents = 'none';
+                    legacyVideo.style.zIndex = '9999';
+                    
+                    var source = document.createElement('source');
+                    source.src = 'data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAG21kYXQAAAGzABAHAAABthABGWAAAAABAAA2Z2VzZHMAAAAAAQABAAEAAAA2YXZjMQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAc3R0cwAAAAAAAAABAAAAAQABAAABAAAAHHN0c2QAAAAAAAAAAQAAAFhzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAABoc3RzegAAAAAAAAAAAAAAAQAAAAEAAAAUc3RjbwAAAAAAAAABAAAAMAAAAGB1ZHRhAAAAWG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAAK2lsc3QAAAAjqXRvbwAAABtkYXRhAAAAAQAAAABMYXZmYzgxLjEyLjEwMA==';
+                    source.type = 'video/mp4';
+                    legacyVideo.appendChild(source);
+                    document.body.appendChild(legacyVideo);
+                }
+                
+                if (legacyVideo) {
+                    try {
+                        var playPromise = legacyVideo.play();
+                        if (playPromise && typeof playPromise.then === 'function') {
+                            playPromise.then(function() {
+                                // 재생 성공
+                            }).catch(function(e) {
+                                if (window.console) console.log("Legacy AOD Play Async Error:", e);
+                            });
+                        }
+                    } catch (e) {
+                        if (window.console) console.log("Legacy AOD Play Sync Error:", e);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Video Setup Error:", err);
+            }
+
+            try {
+                // 3. Standalone(홈화면 추가)용 iframe 가상 네비게이션 적용
+                if (!legacyIframe && document.body) {
+                    legacyIframe = document.createElement('iframe');
+                    legacyIframe.style.display = 'none';
+                    document.body.appendChild(legacyIframe);
+                }
+
+                if (!legacyTimer) {
+                    legacyTimer = window.setInterval(function() {
+                        if (!document.hidden && legacyIframe && legacyIframe.contentWindow) {
+                            try {
+                                legacyIframe.contentWindow.location.replace('about:blank?t=' + new Date().getTime());
+                            } catch(err) {
+                                // 예외 격리
+                            }
+                        }
+                    }, 15000); 
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Timer Setup Error:", err);
+            }
+        }
+
+        function disableLegacyAOD() {
+            if (legacyVideo) {
+                try { legacyVideo.pause(); } catch (e) {}
+            }
+            if (legacyAudio) {
+                try { legacyAudio.pause(); } catch (e) {}
+            }
+            if (legacyTimer) {
+                window.clearInterval(legacyTimer);
+                legacyTimer = null;
+            }
+            if (legacyIframe && legacyIframe.parentNode) {
+                try {
+                    legacyIframe.parentNode.removeChild(legacyIframe);
+                    legacyIframe = null;
+                } catch (e) {}
+            }
+        }
+
+        function enableAOD() {
+            try {
+                // 1. 현대적인 브라우저라면 Wake Lock API 시도
+                if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
+                    var requestPromise = null;
+                    try {
+                        requestPromise = navigator.wakeLock.request('screen');
+                    } catch (err) {
+                        enableLegacyAOD();
+                        return;
+                    }
+
+                    if (requestPromise && typeof requestPromise.then === 'function') {
+                        requestPromise
+                            .then(function(lock) {
+                                wakeLock = lock;
+                            })
+                            .catch(function(err) {
+                                enableLegacyAOD();
+                            });
+                    } else {
+                        enableLegacyAOD();
+                    }
+                } else {
+                    // 2. 구형 아이패드(iOS 9) 및 홈 화면(Standalone) 환경 대응
+                    enableLegacyAOD();
+                }
+            } catch (err) {
+                if (window.console) console.log("AOD Activation Error:", err);
+            }
+        }
+
+        function setupAOD() {
+            enableAOD();
+
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    enableAOD();
+                }
+            });
+
+            window.addEventListener('focus', function() {
+                enableAOD();
+            }, false);
+
+            window.addEventListener('pageshow', function() {
+                enableAOD();
+            }, false);
+
+            var triggerAODOnce = function() {
+                enableAOD();
+                document.removeEventListener('touchstart', triggerAODOnce, false);
+                document.removeEventListener('click', triggerAODOnce, false);
+            };
+            document.addEventListener('touchstart', triggerAODOnce, false);
+            document.addEventListener('click', triggerAODOnce, false);
+        }
+
+        // --- 초기화 안정 실행 로직 ---
+        function safeRun() {
+            try {
+                init();
+            } catch (e) {
+                if (window.console) console.error("Initialize system failed:", e);
+            }
+            
+            try {
+                setupAOD();
+            } catch (e) {
+                if (window.console) console.error("AOD system failed:", e);
+            }
+        }
+
+        // 구동 즉시 실행되도록 보장하여 race condition 무력화
+        safeRun();
+    </script>
+</body>
+</html>
