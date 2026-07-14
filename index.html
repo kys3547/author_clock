@@ -12,6 +12,8 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="apple-touch-icon.png">
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
         body { background-color: #000000; color: #e3e3e6; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; height: 100vh; display: -webkit-flex; display: flex; -webkit-flex-direction: row; flex-direction: row; }
@@ -46,6 +48,59 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
+        /* --- [추가됨] AOD 스위치 스타일 --- */
+        .aod-container {
+            position: absolute;
+            top: 40px;
+            right: 50px;
+            display: -webkit-flex; display: flex;
+            -webkit-align-items: center; align-items: center;
+            gap: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: #444;
+            opacity: 0.15; /* 평소엔 눈에 안 띄게 투명도 대폭 낮춤 */
+            -webkit-transition: opacity 0.3s; transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        .aod-container:hover, .aod-container:active {
+            opacity: 0.8;
+            color: #888;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 16px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #222;
+            border: 1px solid #333;
+            -webkit-transition: .3s; transition: .3s;
+            border-radius: 16px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 10px; width: 10px;
+            left: 2px; bottom: 2px;
+            background-color: #555;
+            -webkit-transition: .3s; transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #1a4a25;
+            border-color: #2e7d32;
+        }
+        input:checked + .slider:before {
+            -webkit-transform: translateX(14px); transform: translateX(14px);
+            background-color: #81c784;
+        }
+        /* ---------------------------------- */
+
         @media (orientation: portrait) {
             body { -webkit-flex-direction: column; flex-direction: column; } 
             .panel { width: 100%; height: 50vh; padding: 40px 40px; }
@@ -59,442 +114,21 @@
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
             
             .quote-author { font-size: 1.1rem; margin-top: 8px; }
+
+            /* 세로 모드일 때 스위치 위치 조정 */
+            .aod-container { top: 30px; right: 40px; }
         }
     </style>
 </head>
 <body>
 
+    <div class="aod-container">
+        <span id="aodLabel">AOD OFF</span>
+        <label class="switch">
+            <input type="checkbox" id="aodToggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+
     <div class="panel left-panel" id="weatherPanel">
-        <div class="date-display" id="currentDate">-- --- ----</div>
-        <div class="weather-info">
-            <span id="weatherIcon">--</span>
-            <span class="temp" id="weatherTemp">--°C</span>
-            <span class="city" id="cityLabel">DETECTING...</span>
-        </div>
-        <div class="quote-text" id="weatherQuote">Loading real-time weather...</div>
-        <div class="quote-author" id="weatherAuthor"></div>
-    </div>
-
-    <div class="panel right-panel" id="clockPanel">
-        <div class="quote-text" id="clockQuote">Syncing time with literature...</div>
-        <div class="quote-author" id="clockAuthor"></div>
-    </div>
-
-    <script>
-        var lastTimeStr = ""; 
-
-        var weatherDatabase = {
-            "Clear": [
-                { q: "Even for me life had its gleams of <strong>sunshine</strong>.", a: "<em>Jane Eyre</em>, Charlotte Brontë", icon: "☀️" },
-                { q: "Some people seemed to get all <strong>sunshine</strong>, and some all shadow.", a: "<em>Little Women</em>, Louisa May Alcott", icon: "☀️" }
-            ],
-            "PartlyCloudy": [
-                { q: "A <strong>few clouds</strong> floated in a sky otherwise perfectly blue.", a: "<em>The Awakening</em>, Kate Chopin", icon: "🌤️" },
-                { q: "The sky was blue, with a <strong>few light clouds</strong> like feathers.", a: "<em>Sons and Lovers</em>, D.H. Lawrence", icon: "🌤️" }
-            ],
-            "MostlyCloudy": [
-                { q: "The sky was <strong>heavy with clouds</strong>, moving rapidly across the moon.", a: "<em>Dracula</em>, Bram Stoker", icon: "⛅" },
-                { q: "The sky was <strong>mostly overcast with clouds</strong>, though now and then a shaft of light broke through.", a: "<em>The Return of the Native</em>, Thomas Hardy", icon: "⛅" }
-            ],
-            "Overcast": [
-                { q: "In every <strong>cloud</strong>, in every tree—filling the air at night... I am surrounded with her image!", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☁️" },
-                { q: "I wandered lonely as a <strong>cloud</strong> that floats on high o'er vales and hills.", a: "<em>I Wandered Lonely as a Cloud</em>, William Wordsworth", icon: "☁️" }
-            ],
-            "Rain": [
-                { q: "The <strong>rain</strong> continued to fall steadily.", a: "<em>A Farewell to Arms</em>, Ernest Hemingway", icon: "🌧️" },
-                { q: "The <strong>rain</strong> pattered dismally against the panes.", a: "<em>Frankenstein</em>, Mary Shelley", icon: "🌧️" }
-            ],
-            "Snow": [
-                { q: "A <strong>snowball</strong> in the face is surely the perfect beginning to a lasting friendship.", a: "<em>The Book Thief</em>, Markus Zusak", icon: "❄️" },
-                { q: "In the falling quiet there was no sky or earth, only <strong>snow</strong> lifting in the wind...", a: "<em>Miriam</em>, Truman Capote", icon: "❄️" }
-            ],
-            "Shower": [
-                { q: "A sudden <strong>shower</strong> came on, and they were all soaked through.", a: "<em>The Wind in the Willows</em>, Kenneth Grahame", icon: "🌦️" }
-            ],
-            "Drizzle": [
-                { q: "A fine, cold <strong>drizzle</strong> was falling, blurring the outlines of the houses.", a: "<em>The Picture of Dorian Gray</em>, Oscar Wilde", icon: "🌫️" }
-            ],
-            "Sleet": [
-                { q: "The wind blew cold, and a driving <strong>sleet</strong> began to fall, freezing as it touched the ground.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🌨️" }
-            ],
-            "Hail": [
-                { q: "The <strong>hail</strong> rattled on the roof, making such a noise that they could hardly hear each other speak.", a: "<em>The Secret Garden</em>, Frances Hodgson Burnett", icon: "☄️" }
-            ],
-            "HeavyRain": [
-                { q: "The <strong>torrential rain</strong> fell in a solid wall, erasing the line between earth and sky.", a: "<em>One Hundred Years of Solitude</em>, Gabriel García Márquez", icon: "🌊" }
-            ],
-            "HeavySnow": [
-                { q: "The day she was buried there came a fall of <strong>snow</strong>; it blew bleak as snow.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☃️" }
-            ],
-            "StrongWind": [
-                { q: "The <strong>wind was howling</strong> through the trees, shaking the very foundations of the house.", a: "<em>Dracula</em>, Bram Stoker", icon: "💨" }
-            ],
-            "RoughSeas": [
-                { q: "The <strong>sea ran mountains high</strong>, and we expected every moment to be swallowed up by the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "⚓" }
-            ],
-            "Dry": [
-                { q: "The land was <strong>parched and dry</strong>, the grass turned to a dusty brown under the pitiless sun.", a: "<em>The Grapes of Wrath</em>, John Steinbeck", icon: "🏜️" }
-            ],
-            "Typhoon": [
-                { q: "The fury of the <strong>typhoon</strong> was like the wrath of an angry god, lashed by wind and water.", a: "<em>Typhoon</em>, Joseph Conrad", icon: "🌀" }
-            ],
-            "Heatwave": [
-                { q: "It was a <strong>blazing hot day</strong> in August, and the city felt like an oven.", a: "<em>The Bell Jar</em>, Sylvia Plath", icon: "🥵" }
-            ],
-            "ColdWave": [
-                { q: "The <strong>bitter cold</strong> penetrated through their thickest garments, freezing their breath into ice.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🥶" }
-            ]
-        };
-
-        function init() {
-            window.addEventListener('resize', function() { lastTimeStr = ""; checkTimeEngine(); }, false);
-            updateDate();
-            fetchWeather();
-            checkTimeEngine();
-            
-            // 엔진 루프
-            setInterval(checkTimeEngine, 1000);
-            setInterval(fetchWeather, 30 * 60000);
-            setInterval(applyBurnInProtection, 60000); // 1분마다 픽셀 시프팅 작동
-        }
-
-        /* 🛡️ 번인(Burn-in) 및 잔상 방지용 픽셀 시프팅 엔진 */
-        function applyBurnInProtection() {
-            // -3px ~ +3px 사이에서 무작위 이동 좌표 생성
-            var shiftX = Math.floor(Math.random() * 7) - 3; 
-            var shiftY = Math.floor(Math.random() * 7) - 3;
-            
-            var panels = document.querySelectorAll('.panel');
-            for(var i = 0; i < panels.length; i++) {
-                // iOS 9 사파리 등 레거시 브라우저와 최신 브라우저 동시 대응
-                panels[i].style.webkitTransform = "translate(" + shiftX + "px, " + shiftY + "px)";
-                panels[i].style.transform = "translate(" + shiftX + "px, " + shiftY + "px)";
-            }
-        }
-
-        function safeTransitionUpdate(textId, authorId, textHtml, authorHtml) {
-            var txtEl = document.getElementById(textId);
-            var autEl = document.getElementById(authorId);
-            
-            txtEl.style.opacity = 0;
-            if(autEl) autEl.style.opacity = 0;
-            
-            setTimeout(function() {
-                txtEl.innerHTML = textHtml;
-                if(autEl) autEl.innerHTML = authorHtml;
-                
-                var rawTextLength = txtEl.innerText.length;
-                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
-                
-                if (isPortrait) {
-                    if (rawTextLength > 100) {
-                        txtEl.style.fontSize = "1.25rem";
-                        txtEl.style.lineHeight = "1.4";
-                    } else if (rawTextLength > 50) {
-                        txtEl.style.fontSize = "1.45rem";
-                        txtEl.style.lineHeight = "1.4";
-                    } else {
-                        txtEl.style.fontSize = "1.75rem";
-                        txtEl.style.lineHeight = "1.5";
-                    }
-                } else {
-                    if (rawTextLength > 120) {
-                        txtEl.style.fontSize = "1.7rem";
-                        txtEl.style.lineHeight = "1.5";
-                    } else if (rawTextLength > 75) {
-                        txtEl.style.fontSize = "2.0rem";
-                        txtEl.style.lineHeight = "1.5";
-                    } else {
-                        txtEl.style.fontSize = "2.35rem";
-                        txtEl.style.lineHeight = "1.6";
-                    }
-                }
-                
-                if (textId === 'weatherQuote') {
-                    var weatherInfoEl = document.querySelector('.weather-info');
-                    if (isPortrait) {
-                        if (rawTextLength > 80) {
-                            weatherInfoEl.style.marginBottom = "12px";
-                            if(autEl) autEl.style.marginTop = "6px";
-                        } else {
-                            weatherInfoEl.style.marginBottom = "22px";
-                            if(autEl) autEl.style.marginTop = "10px";
-                        }
-                    } else {
-                        if (rawTextLength > 100) {
-                            weatherInfoEl.style.marginBottom = "20px";
-                            if(autEl) autEl.style.marginTop = "8px";
-                        } else {
-                            weatherInfoEl.style.marginBottom = "38px";
-                            if(autEl) autEl.style.marginTop = "14px";
-                        }
-                    }
-                }
-                
-                txtEl.style.opacity = 1;
-                if(autEl) autEl.style.opacity = 1;
-            }, 500);
-        }
-
-        function updateDate() {
-            var now = new Date();
-            var day = String(now.getDate());
-            if(day.length < 2) day = '0' + day;
-            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            document.getElementById('currentDate').innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
-        }
-
-        function fetchWeather() {
-            if (navigator.geolocation && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        var lat = position.coords.latitude;
-                        var lon = position.coords.longitude;
-                        reverseGeocode(lat, lon);
-                    },
-                    function(error) {
-                        fetchFallbackLocation();
-                    },
-                    { enableHighAccuracy: true, timeout: 7000 }
-                );
-            } else {
-                fetchFallbackLocation();
-            }
-        }
-
-        function reverseGeocode(lat, lon) {
-            var xhr = new XMLHttpRequest();
-            var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon;
-            
-            xhr.open("GET", url, true);
-            xhr.setRequestHeader("User-Agent", "StandByDashboard/1.5"); 
-            
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var res = JSON.parse(xhr.responseText);
-                            var cityName = res.address.city || res.address.province || res.address.borough || res.address.county || "Incheon";
-                            cleanAndGetWeather(lat, lon, cityName);
-                        } catch(e) {
-                            fetchFallbackLocation(); 
-                        }
-                    } else {
-                        fetchFallbackLocation(); 
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function fetchFallbackLocation() {
-            var xhr = new XMLHttpRequest();
-            var url = "https://get.geojs.io/v1/ip/geo.json"; 
-            
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    var defaultLat = 37.5665;
-                    var defaultLon = 126.9780;
-                    var defaultCity = "Seoul";
-                    
-                    if (xhr.status === 200) {
-                        try {
-                            var data = JSON.parse(xhr.responseText);
-                            defaultLat = parseFloat(data.latitude) || defaultLat;
-                            defaultLon = parseFloat(data.longitude) || defaultLon;
-                            defaultCity = data.city || defaultCity;
-                            
-                            cleanAndGetWeather(defaultLat, defaultLon, defaultCity);
-                        } catch(e) {
-                            getWeatherData(defaultLat, defaultLon, defaultCity);
-                        }
-                    } else {
-                        getWeatherData(defaultLat, defaultLon, defaultCity);
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function cleanAndGetWeather(lat, lon, cityName) {
-            cityName = cityName.replace(/ Metropolitan City/gi, "")
-                               .replace(/ City/gi, "")
-                               .replace(/-si/gi, "");
-            getWeatherData(lat, lon, cityName);
-        }
-
-        function getWeatherData(lat, lon, cityName) {
-            var xhr = new XMLHttpRequest();
-            var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m";
-            
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var data = JSON.parse(xhr.responseText);
-                            var temp = Math.round(data.current.temperature_2m);
-                            var code = data.current.weather_code;
-                            var wind = data.current.wind_speed_10m;
-                            var humidity = data.current.relative_humidity_2m;
-                            
-                            var condition = "Clear";
-                            
-                            if (temp >= 33) condition = "Heatwave";
-                            else if (temp <= -10) condition = "ColdWave";
-                            else if (wind >= 50 && (code === 95 || code === 96 || code === 99)) condition = "Typhoon";
-                            else if (wind >= 50) condition = "RoughSeas";
-                            else if (wind >= 39) condition = "StrongWind";
-                            else if (humidity <= 30 && code <= 3) condition = "Dry";
-                            else {
-                                if (code === 0) condition = "Clear";
-                                else if (code === 1) condition = "PartlyCloudy";
-                                else if (code === 2) condition = "MostlyCloudy";
-                                else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
-                                else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
-                                else if (code === 61 || code === 63) condition = "Rain";
-                                else if (code === 65) condition = "HeavyRain";
-                                else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
-                                else if (code === 71 || code === 73) condition = "Snow";
-                                else if (code === 75) condition = "HeavySnow";
-                                else if (code === 80 || code === 81) condition = "Shower";
-                                else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
-                                else if (code === 96 || code === 99) condition = "Hail";
-                            }
-
-                            var quotesList = weatherDatabase[condition];
-                            var match = quotesList[Math.floor(Math.random() * quotesList.length)];
-
-                            document.getElementById('weatherIcon').innerText = match.icon;
-                            document.getElementById('weatherTemp').innerText = temp + "°C";
-                            document.getElementById('cityLabel').innerText = cityName.toUpperCase();
-                            
-                            safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, "- " + match.a);
-                        } catch (e) {
-                            showOfflineWeather();
-                        }
-                    } else {
-                        showOfflineWeather();
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function showOfflineWeather() {
-            safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
-                "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
-                "- The Offline Chronicler"
-            );
-            document.getElementById('weatherIcon').innerText = "🌐";
-            document.getElementById('weatherTemp').innerText = "Offline";
-            document.getElementById('cityLabel').innerText = "DISCONNECTED";
-        }
-
-        function checkTimeEngine() {
-            var now = new Date();
-            var hours = String(now.getHours());
-            if(hours.length < 2) hours = '0' + hours;
-            var minutes = String(now.getMinutes());
-            if(minutes.length < 2) minutes = '0' + minutes;
-            var currentTimeStr = hours + ":" + minutes;
-
-            if (currentTimeStr !== lastTimeStr) {
-                lastTimeStr = currentTimeStr;
-                updateClock(hours, minutes);
-                updateDate();
-            }
-        }
-
-        function updateClock(hours, minutes) {
-            if (hours === "18" && minutes === "52") {
-                var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
-                var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
-                safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
-                return;
-            }
-
-            var fileTimeStr = hours + "_" + minutes;
-            var xhr = new XMLHttpRequest();
-            var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
-            
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var quotesArray = JSON.parse(xhr.responseText);
-                            if (quotesArray && quotesArray.length > 0) {
-                                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
-                                var first = selected.quote_first || "";
-                                var timeCase = selected.quote_time_case || "";
-                                var last = selected.quote_last || "";
-                                
-                                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
-                                var maxSideLength = isPortrait ? 55 : 130; 
-                                
-                                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
-                                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
-
-                                if (first.length > maxSideLength) {
-                                    var cutIndex = first.length - maxSideLength;
-                                    var firstSentenceEnd = first.indexOf('.', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
-                                    
-                                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
-                                        first = safeEllipsisPreHtml + first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
-                                    } else {
-                                        var breakPoint = first.indexOf(' ', cutIndex);
-                                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
-                                    }
-                                }
-
-                                if (last.length > maxSideLength) {
-                                    var subLast = last.slice(0, maxSideLength);
-                                    var lastPeriod = subLast.lastIndexOf('.');
-                                    var lastQuestion = subLast.lastIndexOf('?');
-                                    var lastExclamation = subLast.lastIndexOf('!');
-                                    
-                                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
-                                    
-                                    if (lastSentenceEnd > 15) {
-                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
-                                    } else {
-                                        var breakPoint = subLast.lastIndexOf(' ');
-                                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
-                                    }
-                                }
-                                
-                                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
-                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
-                                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
-                                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
-                                
-                                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
-                            } else {
-                                showFallbackTime(hours + ":" + minutes);
-                            }
-                        } catch (e) {
-                            showFallbackTime(hours + ":" + minutes);
-                        }
-                    } else {
-                        showFallbackTime(hours + ":" + minutes);
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function showFallbackTime(timeStr) {
-            safeTransitionUpdate('clockQuote', 'clockAuthor', 
-                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
-                "- Unknown Timekeeper"
-            );
-        }
-
-        window.onload = init;
-    </script>
-</body>
-</html>
+        <div class="date-
