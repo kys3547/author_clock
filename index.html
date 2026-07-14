@@ -14,7 +14,7 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body { background-color: #000000; color: #e3e3e6; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; height: 100vh; display: -webkit-flex; display: flex; -webkit-flex-direction: row; flex-direction: row; }
+        body { background-color: #000000; color: #e3e3e6; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; height: 100vh; display: -webkit-flex; display: flex; -webkit-flex-direction: row; flex-direction: row; position: relative; }
         
         .panel { 
             width: 50%; height: 100vh; padding: 60px 50px; 
@@ -39,62 +39,33 @@
         .right-panel .quote-author { text-align: center; width: 100%; }
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
-        #weatherIcon { font-size: 4.5rem; line-height: 1; margin-right: 18px; }
+        
+        /* 구형 웹킷 flexbox 환경에서 이모지 수축 현상(작게 출력되는 버그)을 차단하는 스타일 수정 */
+        #weatherIcon { 
+            font-size: 4.5rem; 
+            line-height: 1; 
+            margin-right: 18px; 
+            display: inline-block;
+            -webkit-flex-shrink: 0;
+            flex-shrink: 0;
+        }
+        
         .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
         .weather-info span.city { font-size: 1.1rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; line-height: 1; margin-bottom: 5px; }
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
-        /* --- 구형 Safari 브라우저 대응을 위한 CSS 수정 --- */
-        .aod-container {
+        /* 화면 우측 하단 저대비 버전 라벨 스타일 */
+        .version-label {
             position: absolute;
-            top: 40px;
-            right: 50px;
-            display: -webkit-flex; display: flex;
-            -webkit-align-items: center; align-items: center;
+            bottom: 15px;
+            right: 20px;
+            font-size: 10px;
+            color: #2a2a2c;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 11px;
-            letter-spacing: 1px;
-            color: #888; 
-            opacity: 0.8; 
+            pointer-events: none;
             z-index: 1000;
         }
-        /* gap 대신 margin-right 속성을 사용하여 간격 조절 */
-        .aod-container #aodLabel {
-            margin-right: 8px;
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 30px;
-            height: 16px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #222;
-            border: 1px solid #333;
-            -webkit-transition: .3s; transition: .3s;
-            border-radius: 16px;
-        }
-        .slider:before {
-            position: absolute; content: "";
-            height: 10px; width: 10px;
-            left: 2px; bottom: 2px;
-            background-color: #555;
-            -webkit-transition: .3s; transition: .3s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #1a4a25;
-            border-color: #2e7d32;
-        }
-        input:checked + .slider:before {
-            -webkit-transform: translateX(14px); transform: translateX(14px);
-            background-color: #81c784;
-        }
-        /* ---------------------------------- */
 
         @media (orientation: portrait) {
             body { -webkit-flex-direction: column; flex-direction: column; } 
@@ -104,25 +75,18 @@
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             
             .weather-info { margin-bottom: 20px; }
-            #weatherIcon { font-size: 3.8rem; margin-right: 14px; }
+            #weatherIcon { font-size: 3.8rem; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block; }
             .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
             
             .quote-author { font-size: 1.1rem; margin-top: 8px; }
-
-            .aod-container { top: 30px; right: 40px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="aod-container">
-        <span id="aodLabel">AOD OFF</span>
-        <label class="switch">
-            <input type="checkbox" id="aodToggle">
-            <span class="slider"></span>
-        </label>
-    </div>
+    <!-- 우측 하단 버전 레이블 -->
+    <div class="version-label">v33</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -506,6 +470,7 @@
                                 var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
                                 var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
 
+                                // [수정 반영] 경계선(문장 끝) 기준 분리 여부에 따라 . . . 선별 표시
                                 if (first.length > maxSideLength) {
                                     var cutIndex = first.length - maxSideLength;
                                     var firstSentenceEnd = first.indexOf('.', cutIndex);
@@ -513,10 +478,13 @@
                                     if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
                                     
                                     if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
-                                        first = safeEllipsisPreHtml + first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                                        // 마침표 등으로 온전히 분절된 경우: 앞부분 말줄임표(. . .) 미출력
+                                        first = first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
                                     } else {
+                                        // 문장 중간에서 잘린 경우: 어쩔 수 없으므로 말줄임표(. . .) 출력
                                         var breakPoint = first.indexOf(' ', cutIndex);
-                                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                                        var slicedFirst = first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                                        first = safeEllipsisPreHtml + slicedFirst;
                                     }
                                 }
 
@@ -529,10 +497,13 @@
                                     var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
                                     
                                     if (lastSentenceEnd > 15) {
-                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                        // 마침표 등으로 깔끔하게 종결된 경우: 뒷부분 말줄임표(. . .) 미출력
+                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
                                     } else {
+                                        // 문장 도중에 짤리는 부득이한 경우에만 말줄임표(. . .) 출력
                                         var breakPoint = subLast.lastIndexOf(' ');
-                                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '')
+                                        last = slicedLast + safeEllipsisHtml;
                                     }
                                 }
                                 
@@ -563,20 +534,18 @@
             );
         }
 
-        // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 ---
+        // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 (항상 활성화) ---
         var wakeLock = null;
-        var legacyVideo = null; // iOS 10 이상 대비 비디오 인스턴스
-        var legacyIframe = null; // iOS 9 이하 standalone PWA 보안 리다이렉션을 위한 iframe 인스턴스
-        var legacyTimer = null; // 하이브리드 강제 차단 타이머
+        var legacyVideo = null; 
+        var legacyIframe = null; 
+        var legacyTimer = null; 
 
-        // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 비디오 구동 함수
         function enableLegacyAOD() {
-            // 1. 비디오 루프 기법 가동 (iOS 10 이상 및 일반 뷰포트 내 강제 구동용)
             if (!legacyVideo) {
                 legacyVideo = document.createElement('video');
                 legacyVideo.setAttribute('title', 'AOD Standby');
                 legacyVideo.setAttribute('playsinline', '');
-                legacyVideo.setAttribute('webkit-playsinline', ''); // iOS 9 이하 standalone/PWA 필수 속성
+                legacyVideo.setAttribute('webkit-playsinline', ''); 
                 legacyVideo.setAttribute('muted', '');
                 legacyVideo.muted = true; 
                 
@@ -590,10 +559,6 @@
                     this.play();
                 }, false);
 
-                // [중요 수정] Standalone(홈 화면에 추가) 모드에서 WebKit 렌더링 엔진은 
-                // 오프스크린(화면 밖에 숨겨진 요소) 상태의 비디오 재생을 전력 절약을 위해 강제 일시 정지(Suspend) 시킵니다.
-                // 따라서 화면 구석(bottom/right 10px)에 실제 가시 면적을 제공하여 뷰포트 활성 상태를 강제하고,
-                // `#000000`(완전 블랙) 배경 위에 투명도 0.05인 블랙 영상을 얹어 눈에는 완벽히 안 보이게 처리합니다.
                 legacyVideo.style.position = 'fixed';
                 legacyVideo.style.width = '10px';
                 legacyVideo.style.height = '10px';
@@ -621,11 +586,6 @@
                 legacyVideo.play();
             }
 
-            // 2. [중요 수정] Standalone(홈화면 추가) 샌드박스 보안용 iframe 가상 네비게이션 적용
-            // 메인 윈도우의 `window.location.href`를 직접 변경하는 경우, 홈 화면 웹앱(PWA)은 모바일 사파리 브라우저 앱을 
-            // 강제로 열거나 화면 프리징이 발생하도록 강제 조치되어 있어 리다이렉트 취소 트릭이 통하지 않고 팅기게 됩니다.
-            // 대신 DOM 내부에 숨겨진 dummy iframe을 주입하고, 그 안에서만 15초 주기로 가상 내비게이션(replace)을 돌려
-            // 독립된 WebKit 백그라운드 스레드에서 iOS 유휴 보호 시간을 무력화시킵니다.
             if (!legacyIframe) {
                 legacyIframe = document.createElement('iframe');
                 legacyIframe.style.display = 'none';
@@ -636,7 +596,6 @@
                 legacyTimer = window.setInterval(function() {
                     if (!document.hidden && legacyIframe && legacyIframe.contentWindow) {
                         try {
-                            // 독립 iframe 내부 갱신을 통해 본체 흐름 및 사파리 아웃팅 현상 없이 시스템 잠금 타이머만 초기화
                             legacyIframe.contentWindow.location.replace('about:blank?t=' + new Date().getTime());
                         } catch(err) {
                             // 예외 격리
@@ -646,139 +605,58 @@
             }
         }
 
-        function disableLegacyAOD() {
-            if (legacyVideo) {
+        // 전체 디바이스에서 동작할 AOD 분기 함수
+        function enableAOD() {
+            if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
                 try {
-                    legacyVideo.pause();
-                } catch (e) {
-                    // 무시
+                    var requestPromise = navigator.wakeLock.request('screen');
+                    if (requestPromise && typeof requestPromise.then === 'function') {
+                        requestPromise
+                            .then(function(lock) {
+                                wakeLock = lock;
+                            })
+                            .catch(function(err) {
+                                enableLegacyAOD();
+                            });
+                    } else {
+                        enableLegacyAOD();
+                    }
+                } catch (err) {
+                    enableLegacyAOD();
                 }
-            }
-            if (legacyTimer) {
-                window.clearInterval(legacyTimer);
-                legacyTimer = null;
-            }
-            if (legacyIframe && legacyIframe.parentNode) {
-                try {
-                    legacyIframe.parentNode.removeChild(legacyIframe);
-                    legacyIframe = null;
-                } catch (e) {
-                    // 무시
-                }
+            } else {
+                enableLegacyAOD();
             }
         }
 
         function setupAOD() {
-            var aodToggle = document.getElementById('aodToggle');
-            var aodLabel = document.getElementById('aodLabel');
+            // 초기 로딩 후 기본 가동
+            enableAOD();
 
-            if (!aodToggle || !aodLabel) {
-                return;
-            }
-
-            aodToggle.addEventListener('change', function() {
-                var self = this;
-                if (self.checked) {
-                    // 1. 현대적인 브라우저라면 Wake Lock API 시도
-                    if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
-                        try {
-                            var requestPromise = navigator.wakeLock.request('screen');
-                            if (requestPromise && typeof requestPromise.then === 'function') {
-                                requestPromise
-                                    .then(function(lock) {
-                                        wakeLock = lock;
-                                        aodLabel.textContent = "AOD ON";
-                                        aodLabel.style.color = "#81c784"; 
-                                    })
-                                    .catch(function(err) {
-                                        // 현대적 API 실패 시 즉시 레거시 기법으로 폴백
-                                        enableLegacyAOD();
-                                        aodLabel.textContent = "AOD ON";
-                                        aodLabel.style.color = "#81c784";
-                                    });
-                            } else {
-                                enableLegacyAOD();
-                                aodLabel.textContent = "AOD ON";
-                                aodLabel.style.color = "#81c784";
-                            }
-                        } catch (err) {
-                            enableLegacyAOD();
-                            aodLabel.textContent = "AOD ON";
-                            aodLabel.style.color = "#81c784";
-                        }
-                    } else {
-                        // 2. 구형 아이패드(iOS 9) 및 홈 화면(Standalone) 환경 대응
-                        try {
-                            enableLegacyAOD();
-                            aodLabel.textContent = "AOD ON";
-                            aodLabel.style.color = "#81c784";
-                        } catch (err) {
-                            aodLabel.textContent = "AOD ERROR";
-                            aodLabel.style.color = "#e57373";
-                            self.checked = false;
-                        }
-                    }
-                } else {
-                    // 스위치 해제 시 전체 잠금 해제
-                    if (wakeLock !== null) {
-                        try {
-                            var releasePromise = wakeLock.release();
-                            if (releasePromise && typeof releasePromise.then === 'function') {
-                                releasePromise
-                                    .then(function() { wakeLock = null; })
-                                    .catch(function() { wakeLock = null; });
-                            } else {
-                                wakeLock = null;
-                            }
-                        } catch (err) {
-                            wakeLock = null;
-                        }
-                    }
-                    disableLegacyAOD();
-                    aodLabel.textContent = "AOD OFF";
-                    aodLabel.style.color = "#888";
-                }
-            });
-
-            // 화면 가시성이 돌아왔을 때 재생 복원
+            // 백그라운드나 전력 최적화 이후 활성 복원 시 AOD 유지
             document.addEventListener('visibilitychange', function() {
-                if (aodToggle.checked) {
-                    if (wakeLock !== null && document.visibilityState === 'visible') {
-                        if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
-                            try {
-                                var resumePromise = navigator.wakeLock.request('screen');
-                                if (resumePromise && typeof resumePromise.then === 'function') {
-                                    resumePromise
-                                        .then(function(lock) {
-                                            wakeLock = lock;
-                                        })
-                                        .catch(function() {
-                                            enableLegacyAOD();
-                                        });
-                                }
-                            } catch (err) {
-                                enableLegacyAOD();
-                            }
-                        }
-                    } else if (document.visibilityState === 'visible') {
-                        enableLegacyAOD();
-                    }
+                if (document.visibilityState === 'visible') {
+                    enableAOD();
                 }
             });
 
-            // [추가] Standalone 모드에서는 visibilitychange 감지 버그(permanent document.hidden=false)가 빈번하여, 
-            // 윈도우 포커스 복원 및 페이지쇼 이벤트를 통해 확실하게 연동되도록 보강합니다.
             window.addEventListener('focus', function() {
-                if (aodToggle.checked) {
-                    enableLegacyAOD();
-                }
+                enableAOD();
             }, false);
 
             window.addEventListener('pageshow', function() {
-                if (aodToggle.checked) {
-                    enableLegacyAOD();
-                }
+                enableAOD();
             }, false);
+
+            // [추가] 모바일 사파리 등의 자동재생/WakeLock 유저 제스처 보호벽 우회용 핸들러 등록
+            // 사용자의 첫 화면 터치 또는 클릭 시 AOD 실행 안정성을 재검증 및 확보합니다.
+            var triggerAODOnce = function() {
+                enableAOD();
+                document.removeEventListener('touchstart', triggerAODOnce, false);
+                document.removeEventListener('click', triggerAODOnce, false);
+            };
+            document.addEventListener('touchstart', triggerAODOnce, false);
+            document.addEventListener('click', triggerAODOnce, false);
         }
 
         // --- 초기화 안정 실행 로직 ---
