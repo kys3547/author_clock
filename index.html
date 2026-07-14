@@ -40,15 +40,18 @@
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         
-        /* [중요 수정] 날씨 아이콘의 크기를 옆의 기온(2.8rem)과 완벽하게 동일 정합으로 조정 */
+        /* [중요 수정] 아이콘의 크기를 옆의 기온 텍스트(2.8rem)와 완벽히 1대1로 일치시킴 */
         #weatherIcon { 
             font-size: 2.8rem !important; 
             line-height: 1; 
             margin-right: 18px; 
-            display: inline-block !important;
+            display: -webkit-inline-flex !important;
+            display: inline-flex !important;
+            -webkit-align-items: center; align-items: center;
+            -webkit-justify-content: center; justify-content: center;
             -webkit-flex-shrink: 0;
             flex-shrink: 0;
-            font-family: "Apple Color Emoji", "AppleColorEmoji", sans-serif !important; 
+            color: #ff9f0a; /* 대시보드와 어울리는 오렌지-옐로우 벡터 악센트 부여 */
         }
         
         .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
@@ -98,7 +101,7 @@
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             
             .weather-info { margin-bottom: 20px; }
-            /* 포트레이트 기온(2.4rem)과 완전 동일화 */
+            /* 포트레이트 가중 규격 기온(2.4rem)과 완전 일치화 */
             #weatherIcon { font-size: 2.4rem !important; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block !important; }
             .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
@@ -122,8 +125,8 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (v37 자동 업데이트) -->
-    <div class="version-label">v37</div>
+    <!-- 우측 하단 버전 레이블 (자동 업데이트 v38) -->
+    <div class="version-label">v38</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -146,66 +149,96 @@
 
         var weatherDatabase = {
             "Clear": [
-                { q: "Even for me life had its gleams of <strong>sunshine</strong>.", a: "<em>Jane Eyre</em>, Charlotte Brontë", icon: "☀️" },
-                { q: "Some people seemed to get all <strong>sunshine</strong>, and some all shadow.", a: "<em>Little Women</em>, Louisa May Alcott", icon: "☀️" }
+                { q: "Even for me life had its gleams of <strong>sunshine</strong>.", a: "<em>Jane Eyre</em>, Charlotte Brontë" },
+                { q: "Some people seemed to get all <strong>sunshine</strong>, and some all shadow.", a: "<em>Little Women</em>, Louisa May Alcott" }
             ],
             "PartlyCloudy": [
-                { q: "A <strong>few clouds</strong> floated in a sky otherwise perfectly blue.", a: "<em>The Awakening</em>, Kate Chopin", icon: "🌤️" },
-                { q: "The sky was blue, with a <strong>few light clouds</strong> like feathers.", a: "<em>Sons and Lovers</em>, D.H. Lawrence", icon: "🌤️" }
+                { q: "A <strong>few clouds</strong> floated in a sky otherwise perfectly blue.", a: "<em>The Awakening</em>, Kate Chopin" },
+                { q: "The sky was blue, with a <strong>few light clouds</strong> like feathers.", a: "<em>Sons and Lovers</em>, D.H. Lawrence" }
             ],
             "MostlyCloudy": [
-                { q: "The sky was <strong>heavy with clouds</strong>, moving rapidly across the moon.", a: "<em>Dracula</em>, Bram Stoker", icon: "⛅" },
-                { q: "The sky was <strong>mostly overcast with clouds</strong>, though now and then a shaft of light broke through.", a: "<em>The Return of the Native</em>, Thomas Hardy", icon: "⛅" }
+                { q: "The sky was <strong>heavy with clouds</strong>, moving rapidly across the moon.", a: "<em>Dracula</em>, Bram Stoker" },
+                { q: "The sky was <strong>mostly overcast with clouds</strong>, though now and then a shaft of light broke through.", a: "<em>The Return of the Native</em>, Thomas Hardy" }
             ],
             "Overcast": [
-                { q: "In every <strong>cloud</strong>, in every tree—filling the air at night... I am surrounded with her image!", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☁️" },
-                { q: "I wandered lonely as a <strong>cloud</strong> that floats on high o'er vales and hills.", a: "<em>I Wandered Lonely as a Cloud</em>, William Wordsworth", icon: "☁️" }
+                { q: "In every <strong>cloud</strong>, in every tree—filling the air at night... I am surrounded with her image!", a: "<em>Wuthering Heights</em>, Emily Brontë" },
+                { q: "I wandered lonely as a <strong>cloud</strong> that floats on high o'er vales and hills.", a: "<em>I Wandered Lonely as a Cloud</em>, William Wordsworth" }
             ],
             "Rain": [
-                { q: "The <strong>rain</strong> continued to fall steadily.", a: "<em>A Farewell to Arms</em>, Ernest Hemingway", icon: "🌧️" },
-                { q: "The <strong>rain</strong> pattered dismally against the panes.", a: "<em>Frankenstein</em>, Mary Shelley", icon: "🌧️" }
+                { q: "The <strong>rain</strong> continued to fall steadily.", a: "<em>A Farewell to Arms</em>, Ernest Hemingway" },
+                { q: "The <strong>rain</strong> pattered dismally against the panes.", a: "<em>Frankenstein</em>, Mary Shelley" }
             ],
             "Snow": [
-                { q: "A <strong>snowball</strong> in the face is surely the perfect beginning to a lasting friendship.", a: "<em>The Book Thief</em>, Markus Zusak", icon: "❄️" },
-                { q: "In the falling quiet there was no sky or earth, only <strong>snow</strong> lifting in the wind...", a: "<em>Miriam</em>, Truman Capote", icon: "❄️" }
+                { q: "A <strong>snowball</strong> in the face is surely the perfect beginning to a lasting friendship.", a: "<em>The Book Thief</em>, Markus Zusak" },
+                { q: "In the falling quiet there was no sky or earth, only <strong>snow</strong> lifting in the wind...", a: "<em>Miriam</em>, Truman Capote" }
             ],
             "Shower": [
-                { q: "A sudden <strong>shower</strong> came on, and they were all soaked through.", a: "<em>The Wind in the Willows</em>, Kenneth Grahame", icon: "🌦️" }
+                { q: "A sudden <strong>shower</strong> came on, and they were all soaked through.", a: "<em>The Wind in the Willows</em>, Kenneth Grahame" }
             ],
             "Drizzle": [
-                { q: "A fine, cold <strong>drizzle</strong> was falling, blurring the outlines of the houses.", a: "<em>The Picture of Dorian Gray</em>, Oscar Wilde", icon: "🌫️" }
+                { q: "A fine, cold <strong>drizzle</strong> was falling, blurring the outlines of the houses.", a: "<em>The Picture of Dorian Gray</em>, Oscar Wilde" }
             ],
             "Sleet": [
-                { q: "The wind blew cold, and a driving <strong>sleet</strong> began to fall, freezing as it touched the ground.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🌨️" }
+                { q: "The wind blew cold, and a driving <strong>sleet</strong> began to fall, freezing as it touched the ground.", a: "<em>The Call of the Wild</em>, Jack London" }
             ],
             "Hail": [
-                { q: "The <strong>hail</strong> rattled on the roof, making such a noise that they could hardly hear each other speak.", a: "<em>The Secret Garden</em>, Frances Hodgson Burnett", icon: "☄️" }
+                { q: "The <strong>hail</strong> rattled on the roof, making such a noise that they could hardly hear each other speak.", a: "<em>The Secret Garden</em>, Frances Hodgson Burnett" }
             ],
             "HeavyRain": [
-                { q: "The <strong>torrential rain</strong> fell in a solid wall, erasing the line between earth and sky.", a: "<em>One Hundred Years of Solitude</em>, Gabriel García Márquez", icon: "🌊" }
+                { q: "The <strong>torrential rain</strong> fell in a solid wall, erasing the line between earth and sky.", a: "<em>One Hundred Years of Solitude</em>, Gabriel García Márquez" }
             ],
             "HeavySnow": [
-                { q: "The day she was buried there came a fall of <strong>snow</strong>; it blew bleak as snow.", a: "<em>Wuthering Heights</em>, Emily Brontë", icon: "☃️" }
+                { q: "The day she was buried there came a fall of <strong>snow</strong>; it blew bleak as snow.", a: "<em>Wuthering Heights</em>, Emily Brontë" }
             ],
             "StrongWind": [
-                { q: "The <strong>wind was howling</strong> through the trees, shaking the very foundations of the house.", a: "<em>Dracula</em>, Bram Stoker", icon: "💨" }
+                { q: "The <strong>wind was howling</strong> through the trees, shaking the very foundations of the house.", a: "<em>Dracula</em>, Bram Stoker" }
             ],
             "RoughSeas": [
-                { q: "The <strong>sea ran mountains high</strong>, and we expected every moment to be swallowed up by the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe", icon: "⚓" }
+                { q: "The <strong>sea ran mountains high</strong>, and we expected every moment to be swallowed up by the waves.", a: "<em>Robinson Crusoe</em>, Daniel Defoe" }
             ],
             "Dry": [
-                { q: "The land was <strong>parched and dry</strong>, the grass turned to a dusty brown under the pitiless sun.", a: "<em>The Grapes of Wrath</em>, John Steinbeck", icon: "🏜️" }
+                { q: "The land was <strong>parched and dry</strong>, the grass turned to a dusty brown under the pitiless sun.", a: "<em>The Grapes of Wrath</em>, John Steinbeck" }
             ],
             "Typhoon": [
-                { q: "The fury of the <strong>typhoon</strong> was like the wrath of an angry god, lashed by wind and water.", a: "<em>Typhoon</em>, Joseph Conrad", icon: "🌀" }
+                { q: "The fury of the <strong>typhoon</strong> was like the wrath of an angry god, lashed by wind and water.", a: "<em>Typhoon</em>, Joseph Conrad" }
             ],
             "Heatwave": [
-                { q: "It was a <strong>blazing hot day</strong> in August, and the city felt like an oven.", a: "<em>The Bell Jar</em>, Sylvia Plath", icon: "🥵" }
+                { q: "It was a <strong>blazing hot day</strong> in August, and the city felt like an oven.", a: "<em>The Bell Jar</em>, Sylvia Plath" }
             ],
             "ColdWave": [
-                { q: "The <strong>bitter cold</strong> penetrated through their thickest garments, freezing their breath into ice.", a: "<em>The Call of the Wild</em>, Jack London", icon: "🥶" }
+                { q: "The <strong>bitter cold</strong> penetrated through their thickest garments, freezing their breath into ice.", a: "<em>The Call of the Wild</em>, Jack London" }
             ]
         };
+
+        // [중요 신설] WebKit 이미지 스케일 제한 우회용 표준 경량 벡터 로직
+        // 어떠한 구형 사파리 엔진 환경에서도 글꼴 뭉개짐이나 무반응 현상 없이 기온 텍스트와 정확하게 크기가 동조됩니다.
+        function getWeatherSVG(condition) {
+            var svgStart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em; height:1em; display:inline-block;">';
+            var svgEnd = '</svg>';
+            var body = '';
+
+            if (condition === "Clear" || condition === "Heatwave") {
+                body = '<circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>';
+            } else if (condition === "PartlyCloudy" || condition === "MostlyCloudy") {
+                body = '<path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M6.34 17.66l-1.41 1.41"/><path d="M17.5 10A5.5 5.5 0 0 1 22 15.5h0A3.5 3.5 0 0 1 18.5 19H8.5a4.5 4.5 0 0 1-1-8.9A5.5 5.5 0 0 1 17.5 10z" fill="currentColor" fill-opacity="0.15"/>';
+            } else if (condition === "Overcast" || condition === "Dry" || condition === "Typhoon") {
+                body = '<path d="M17.5 10A5.5 5.5 0 0 1 22 15.5h0A3.5 3.5 0 0 1 18.5 19H8.5a4.5 4.5 0 0 1-1-8.9A5.5 5.5 0 0 1 17.5 10z" fill="currentColor" fill-opacity="0.2"/>';
+            } else if (condition === "Rain" || condition === "HeavyRain" || condition === "Shower") {
+                body = '<path d="M17 10a5 5 0 0 1 4.9 5.5A3 3 0 0 1 19 18.5H8.5a4 4 0 0 1-1-7.9A5 5 0 0 1 17 10z"/><path d="M8 21v2M12 21v2M16 21v2"/>';
+            } else if (condition === "Snow" || condition === "HeavySnow" || condition === "ColdWave") {
+                body = '<path d="M17 10a5 5 0 0 1 4.9 5.5A3 3 0 0 1 19 18.5H8.5a4 4 0 0 1-1-7.9A5 5 0 0 1 17 10z"/><path d="M8 21h.01M12 21h.01M16 21h.01"/>';
+            } else if (condition === "Drizzle") {
+                body = '<path d="M17 10a5 5 0 0 1 4.9 5.5A3 3 0 0 1 19 18.5H8.5a4 4 0 0 1-1-7.9A5 5 0 0 1 17 10z"/><path d="M8 21h4M12 21h4"/>';
+            } else if (condition === "Sleet" || condition === "Hail") {
+                body = '<path d="M17 10a5 5 0 0 1 4.9 5.5A3 3 0 0 1 19 18.5H8.5a4 4 0 0 1-1-7.9A5 5 0 0 1 17 10z"/><path d="m7 21 2 2M11 21l2 2M15 21l2 2"/>';
+            } else if (condition === "StrongWind" || condition === "RoughSeas") {
+                body = '<path d="M2 10h18a2 2 0 1 0-2-2M2 14h15a3 3 0 1 1-3 3M2 18h12a2 2 0 1 0-2-2"/>';
+            } else {
+                body = '<circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10zM2 12h20"/>';
+            }
+
+            return svgStart + body + svgEnd;
+        }
 
         function init() {
             window.addEventListener('resize', function() { lastTimeStr = ""; checkTimeEngine(); }, false);
@@ -442,7 +475,9 @@
                             var wIcon = document.getElementById('weatherIcon');
                             var wTemp = document.getElementById('weatherTemp');
                             var cLabel = document.getElementById('cityLabel');
-                            if(wIcon) wIcon.innerText = match.icon;
+                            
+                            // [수정] 이모지 대신 고해상도 동일 스케일 SVG 로 대체
+                            if(wIcon) wIcon.innerHTML = getWeatherSVG(condition);
                             if(wTemp) wTemp.innerText = temp + "°C";
                             if(cLabel) cLabel.innerText = cityName.toUpperCase();
                             
@@ -466,7 +501,7 @@
             var wIcon = document.getElementById('weatherIcon');
             var wTemp = document.getElementById('weatherTemp');
             var cLabel = document.getElementById('cityLabel');
-            if(wIcon) wIcon.innerText = "🌐";
+            if(wIcon) wIcon.innerHTML = getWeatherSVG("Offline");
             if(wTemp) wTemp.innerText = "Offline";
             if(cLabel) cLabel.innerText = "DISCONNECTED";
         }
@@ -579,13 +614,12 @@
         var wakeLock = null;
         var legacyVideo = null; 
         var legacyAudio = null; 
-        var legacyAudioCtx = null; // 오디오 컨텍스트 락 해결용 인스턴스
-        var legacyAudioSource = null; // 무음 루프용 인스턴스
+        var legacyAudioCtx = null; 
+        var legacyAudioSource = null; 
         var legacyIframe = null; 
         var legacyTimer = null; 
 
-        // [중요 설계 변경] Web Audio API 무음 오디오 컨텍스트 루프 가동 함수
-        // iOS 9 Standalone 웹앱이 자바스크립트 타이머 스레드를 동결하지 않도록 방어하는 이중 잠금 메커니즘
+        // Web Audio API 무음 오디오 컨텍스트 루프 가동 함수
         function enableWebAudioSilence() {
             try {
                 if (!legacyAudioCtx) {
@@ -605,7 +639,6 @@
                         var emptyBuffer = legacyAudioCtx.createBuffer(1, bufferSize, legacyAudioCtx.sampleRate);
                         var output = emptyBuffer.getChannelData(0);
                         
-                        // 완전한 무음(0) 값으로 버퍼 채우기
                         for (var i = 0; i < bufferSize; i++) {
                             output[i] = 0;
                         }
@@ -714,9 +747,6 @@
                 if (!legacyIframe && document.body) {
                     legacyIframe = document.createElement('iframe');
                     
-                    // [대수정] display: none 대신 가시 구역(Viewport) 안에 위치시키되 완전히 투명하게 처리합니다.
-                    // Standalone PWA 모드에서 display: none인 프레임의 위치 이동/새로고침은 WebKit의 강제적인
-                    // 스레드 서스펜션 정책에 의해 전력 연장 신호가 무시되거나 무효화되는 특징이 있습니다.
                     legacyIframe.style.position = 'fixed';
                     legacyIframe.style.width = '10px';
                     legacyIframe.style.height = '10px';
@@ -763,7 +793,6 @@
                     legacyIframe = null;
                 } catch (e) {}
             }
-            // Web Audio 자원 해제
             if (legacyAudioSource) {
                 try { legacyAudioSource.stop(); } catch(e) {}
                 legacyAudioSource = null;
@@ -825,7 +854,7 @@
 
             var triggerAODOnce = function() {
                 enableAOD();
-                enableWebAudioSilence(); // 터치 제스처 잠금 해제 시 웹 오디오 무음 루프 병합 기동
+                enableWebAudioSilence(); 
                 document.removeEventListener('touchstart', triggerAODOnce, false);
                 document.removeEventListener('click', triggerAODOnce, false);
             };
