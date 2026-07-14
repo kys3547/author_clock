@@ -40,8 +40,9 @@
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         
+        /* [중요 수정] 날씨 아이콘의 크기를 옆의 기온(2.8rem)과 완벽하게 동일 정합으로 조정 */
         #weatherIcon { 
-            font-size: 72px !important; 
+            font-size: 2.8rem !important; 
             line-height: 1; 
             margin-right: 18px; 
             display: inline-block !important;
@@ -55,7 +56,7 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
-        /* 저대비 새로고침 버튼 스타일 정의 */
+        /* 저대비 새로고침 버튼 */
         .refresh-btn {
             position: absolute;
             top: 40px;
@@ -97,7 +98,8 @@
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             
             .weather-info { margin-bottom: 20px; }
-            #weatherIcon { font-size: 60px !important; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block !important; }
+            /* 포트레이트 기온(2.4rem)과 완전 동일화 */
+            #weatherIcon { font-size: 2.4rem !important; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block !important; }
             .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
             
@@ -112,7 +114,7 @@
 </head>
 <body>
 
-    <!-- 디자인 새로고침 버튼 (대칭 레이아웃) -->
+    <!-- 디자인 새로고침 버튼 -->
     <div class="refresh-btn" id="refreshBtn" onclick="forceReload()">
         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 4v6h-6"></path>
@@ -120,8 +122,8 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (자동 갱신) -->
-    <div class="version-label">v36</div>
+    <!-- 우측 하단 버전 레이블 (v37 자동 업데이트) -->
+    <div class="version-label">v37</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -216,7 +218,7 @@
             setInterval(applyBurnInProtection, 60000); 
         }
 
-        // 캐시 극복용 가상 새로고침 래퍼 함수
+        // 캐시 극복용 가상 새로고침
         function forceReload() {
             try {
                 var currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -339,9 +341,6 @@
             var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon;
             
             xhr.open("GET", url, true);
-            
-            // [버그 수정 완료] setRequestHeader로 'User-Agent'를 명시적으로 조작할 시, 
-            // 윈도우 크롬 및 사파리 보안 규정에 저촉되어 동기식 돔 익셉션이 발생, 스크립트 실행이 중단되는 문제를 전면 차단했습니다.
             
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
@@ -580,13 +579,53 @@
         var wakeLock = null;
         var legacyVideo = null; 
         var legacyAudio = null; 
+        var legacyAudioCtx = null; // 오디오 컨텍스트 락 해결용 인스턴스
+        var legacyAudioSource = null; // 무음 루프용 인스턴스
         var legacyIframe = null; 
         var legacyTimer = null; 
+
+        // [중요 설계 변경] Web Audio API 무음 오디오 컨텍스트 루프 가동 함수
+        // iOS 9 Standalone 웹앱이 자바스크립트 타이머 스레드를 동결하지 않도록 방어하는 이중 잠금 메커니즘
+        function enableWebAudioSilence() {
+            try {
+                if (!legacyAudioCtx) {
+                    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        legacyAudioCtx = new AudioContextClass();
+                    }
+                }
+                
+                if (legacyAudioCtx) {
+                    if (legacyAudioCtx.state === 'suspended') {
+                        legacyAudioCtx.resume();
+                    }
+                    
+                    if (!legacyAudioSource) {
+                        var bufferSize = 2 * legacyAudioCtx.sampleRate;
+                        var emptyBuffer = legacyAudioCtx.createBuffer(1, bufferSize, legacyAudioCtx.sampleRate);
+                        var output = emptyBuffer.getChannelData(0);
+                        
+                        // 완전한 무음(0) 값으로 버퍼 채우기
+                        for (var i = 0; i < bufferSize; i++) {
+                            output[i] = 0;
+                        }
+                        
+                        legacyAudioSource = legacyAudioCtx.createBufferSource();
+                        legacyAudioSource.buffer = emptyBuffer;
+                        legacyAudioSource.loop = true;
+                        legacyAudioSource.connect(legacyAudioCtx.destination);
+                        legacyAudioSource.start(0);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Web Audio Silence Error:", err);
+            }
+        }
 
         // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 미디어 구동 함수
         function enableLegacyAOD() {
             try {
-                // 1. 백그라운드 무음 오디오 루프 스트림 기동 (iOS 9 Standalone 잠금 회피용)
+                // 1. 백그라운드 무음 오디오 루프 스트림 기동 (WAV 무음 스트림)
                 if (!legacyAudio && document.body) {
                     legacyAudio = document.createElement('audio');
                     legacyAudio.setAttribute('title', 'AOD Standby Audio');
@@ -674,7 +713,20 @@
                 // 3. Standalone(홈화면 추가)용 iframe 가상 네비게이션 적용
                 if (!legacyIframe && document.body) {
                     legacyIframe = document.createElement('iframe');
-                    legacyIframe.style.display = 'none';
+                    
+                    // [대수정] display: none 대신 가시 구역(Viewport) 안에 위치시키되 완전히 투명하게 처리합니다.
+                    // Standalone PWA 모드에서 display: none인 프레임의 위치 이동/새로고침은 WebKit의 강제적인
+                    // 스레드 서스펜션 정책에 의해 전력 연장 신호가 무시되거나 무효화되는 특징이 있습니다.
+                    legacyIframe.style.position = 'fixed';
+                    legacyIframe.style.width = '10px';
+                    legacyIframe.style.height = '10px';
+                    legacyIframe.style.bottom = '10px';
+                    legacyIframe.style.right = '10px';
+                    legacyIframe.style.opacity = '0.01';
+                    legacyIframe.style.pointerEvents = 'none';
+                    legacyIframe.style.border = 'none';
+                    legacyIframe.style.zIndex = '-9999';
+                    
                     document.body.appendChild(legacyIframe);
                 }
 
@@ -710,6 +762,15 @@
                     legacyIframe.parentNode.removeChild(legacyIframe);
                     legacyIframe = null;
                 } catch (e) {}
+            }
+            // Web Audio 자원 해제
+            if (legacyAudioSource) {
+                try { legacyAudioSource.stop(); } catch(e) {}
+                legacyAudioSource = null;
+            }
+            if (legacyAudioCtx) {
+                try { legacyAudioCtx.close(); } catch(e) {}
+                legacyAudioCtx = null;
             }
         }
 
@@ -764,6 +825,7 @@
 
             var triggerAODOnce = function() {
                 enableAOD();
+                enableWebAudioSilence(); // 터치 제스처 잠금 해제 시 웹 오디오 무음 루프 병합 기동
                 document.removeEventListener('touchstart', triggerAODOnce, false);
                 document.removeEventListener('click', triggerAODOnce, false);
             };
@@ -786,7 +848,6 @@
             }
         }
 
-        // 구동 즉시 실행되도록 보장하여 race condition 무력화
         safeRun();
     </script>
 </body>
