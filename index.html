@@ -565,33 +565,30 @@
 
         // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 ---
         var wakeLock = null;
-        var legacyVideo = null; // iOS 9 이하 구형 기기를 위한 전역 비디오 인스턴스
+        var legacyVideo = null; // iOS 10 이상 대비 비디오 인스턴스
+        var legacyTimer = null; // iOS 9 이하 구형 기기를 위한 하이브리드 강제 차단 타이머
 
         // 구형 iOS 환경에서 화면 꺼짐을 막기 위한 보이지 않는 무음 루프 비디오 구동 함수
         function enableLegacyAOD() {
+            // 1. 비디오 루프 기법 가동 (iOS 10 이상 대비)
             if (!legacyVideo) {
                 legacyVideo = document.createElement('video');
                 legacyVideo.setAttribute('title', 'AOD Standby');
                 legacyVideo.setAttribute('playsinline', '');
-                legacyVideo.setAttribute('webkit-playsinline', ''); // iOS 9 이하 구형 기기 맞춤 속성 (필수)
+                legacyVideo.setAttribute('webkit-playsinline', ''); // iOS 9 이하 구형 기기 필수 속성
                 legacyVideo.setAttribute('muted', '');
-                legacyVideo.muted = true; // 음소거가 확실히 되어 있어야 정책 상 자동 백그라운드 재생 허용됨
+                legacyVideo.muted = true; 
                 
-                // [수정] loop 속성은 구형 iOS에서 절전 방지 동작을 무력화하므로 속성을 지정하지 않습니다.
-                // 대신 timeupdate 리스너를 활용해 주기적으로 재생 구간을 리셋(수동 루프)시킵니다.
                 legacyVideo.addEventListener('timeupdate', function() {
                     if (this.currentTime > 0.5) {
                         this.currentTime = 0;
                     }
                 }, false);
                 
-                // 자연 종료될 경우에 대한 이중 방어 루프
                 legacyVideo.addEventListener('ended', function() {
                     this.play();
                 }, false);
 
-                // [수정] 1px 크기의 비디오나 투명도가 완벽히 0인 요소는 모바일 Safari 최적화에 의해 일시정지될 수 있습니다.
-                // 따라서 물리적인 크기를 주되 화면 밖 좌표(-500px)로 안전하게 퇴출시킵니다.
                 legacyVideo.style.position = 'fixed';
                 legacyVideo.style.width = '120px';
                 legacyVideo.style.height = '120px';
@@ -602,14 +599,12 @@
                 legacyVideo.style.zIndex = '-9999';
                 
                 var source = document.createElement('source');
-                // 1.5초 블랙 무음 영상 데이터
                 source.src = 'data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAG21kYXQAAAGzABAHAAABthABGWAAAAABAAA2Z2VzZHMAAAAAAQABAAEAAAA2YXZjMQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAc3R0cwAAAAAAAAABAAAAAQABAAABAAAAHHN0c2QAAAAAAAAAAQAAAFhzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAABoc3RzegAAAAAAAAAAAAAAAQAAAAEAAAAUc3RjbwAAAAAAAAABAAAAMAAAAGB1ZHRhAAAAWG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAAK2lsc3QAAAAjqXRvbwAAABtkYXRhAAAAAQAAAABMYXZmYzgxLjEyLjEwMA==';
                 source.type = 'video/mp4';
                 legacyVideo.appendChild(source);
                 document.body.appendChild(legacyVideo);
             }
             
-            // 사용자 동작 핸들러 내에서 호출되므로 정상 재생됩니다.
             var playPromise = legacyVideo.play();
             if (playPromise && typeof playPromise.then === 'function') {
                 playPromise.then(function() {
@@ -618,8 +613,27 @@
                     if (window.console) console.log("Legacy AOD Play Error:", e);
                 });
             } else {
-                // 구형 Safari에서 play()가 Promise를 반환하지 않을 경우를 대비한 구문
                 legacyVideo.play();
+            }
+
+            // 2. [추가] 구형 iOS (iOS 9 이하) 전용 가상 리다이렉트 무효화 기법 (NoSleep.js 레거시 엔진)
+            // 비디오만으로는 OS 샌드박스의 차단 벽을 뚫기 힘든 최저 사양 기기를 위한 하이브리드 보완책입니다.
+            // 15초 간격으로 무해한 가상 네비게이션 요청을 트리거한 뒤 즉시 취소하여 iOS 시스템의 유휴 시간 제한을 계속 연장시킵니다.
+            if (!legacyTimer) {
+                legacyTimer = window.setInterval(function() {
+                    if (!document.hidden) {
+                        try {
+                            // 해시 태그를 절단하고 가상 리다이렉션 호출
+                            window.location.href = window.location.href.split('#')[0];
+                            // 0ms 만에 중지시켜 실질적인 새로고침이나 화면 플래시를 발생시키지 않고 차단함
+                            window.setTimeout(function() {
+                                window.stop();
+                            }, 0);
+                        } catch(err) {
+                            // 조용히 예외 처리
+                        }
+                    }
+                }, 15000); // 15초 주기 반복
             }
         }
 
@@ -630,6 +644,11 @@
                 } catch (e) {
                     // 무시
                 }
+            }
+            // 백그라운드 리다이렉트 연장 타이머 정지
+            if (legacyTimer) {
+                window.clearInterval(legacyTimer);
+                legacyTimer = null;
             }
         }
 
@@ -656,7 +675,7 @@
                                         aodLabel.style.color = "#81c784"; 
                                     })
                                     .catch(function(err) {
-                                        // 현대적 API 실패 시, 비디오 기반 레거시 우회 기법으로 즉시 폴백
+                                        // 현대적 API 실패 시, 비디오 및 타이머 기반 레거시 우회 기법으로 즉시 폴백
                                         enableLegacyAOD();
                                         aodLabel.textContent = "AOD ON";
                                         aodLabel.style.color = "#81c784";
@@ -672,7 +691,7 @@
                             aodLabel.style.color = "#81c784";
                         }
                     } else {
-                        // 2. 구형 아이패드(iOS 9) 등 API 미지원 환경에서는 무음 비디오 트릭으로 직행
+                        // 2. 구형 아이패드(iOS 9) 등 API 미지원 환경에서는 무음 비디오 + 가상 리다이렉트 트릭으로 직행
                         try {
                             enableLegacyAOD();
                             aodLabel.textContent = "AOD ON";
@@ -699,7 +718,7 @@
                             wakeLock = null;
                         }
                     }
-                    // 무음 백그라운드 영상도 중단시킵니다.
+                    // 무음 백그라운드 영상 및 가상 리다이렉션 타이머 중단
                     disableLegacyAOD();
                     aodLabel.textContent = "AOD OFF";
                     aodLabel.style.color = "#888";
@@ -727,7 +746,7 @@
                             }
                         }
                     } else if (document.visibilityState === 'visible') {
-                        // 구형 장비 탭 전환 후 돌아올 때 비디오 자동 재가동
+                        // 구형 장비 탭 전환 후 돌아올 때 비디오/타이머 자동 재가동
                         enableLegacyAOD();
                     }
                 }
