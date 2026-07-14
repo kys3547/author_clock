@@ -232,6 +232,8 @@
             var txtEl = document.getElementById(textId);
             var autEl = document.getElementById(authorId);
             
+            if (!txtEl) return; // 요소 누락 시 에러 전파 방지
+            
             txtEl.style.opacity = 0;
             if(autEl) autEl.style.opacity = 0;
             
@@ -268,21 +270,23 @@
                 
                 if (textId === 'weatherQuote') {
                     var weatherInfoEl = document.querySelector('.weather-info');
-                    if (isPortrait) {
-                        if (rawTextLength > 80) {
-                            weatherInfoEl.style.marginBottom = "12px";
-                            if(autEl) autEl.style.marginTop = "6px";
+                    if (weatherInfoEl) {
+                        if (isPortrait) {
+                            if (rawTextLength > 80) {
+                                weatherInfoEl.style.marginBottom = "12px";
+                                if(autEl) autEl.style.marginTop = "6px";
+                            } else {
+                                weatherInfoEl.style.marginBottom = "22px";
+                                if(autEl) autEl.style.marginTop = "10px";
+                            }
                         } else {
-                            weatherInfoEl.style.marginBottom = "22px";
-                            if(autEl) autEl.style.marginTop = "10px";
-                        }
-                    } else {
-                        if (rawTextLength > 100) {
-                            weatherInfoEl.style.marginBottom = "20px";
-                            if(autEl) autEl.style.marginTop = "8px";
-                        } else {
-                            weatherInfoEl.style.marginBottom = "38px";
-                            if(autEl) autEl.style.marginTop = "14px";
+                            if (rawTextLength > 100) {
+                                weatherInfoEl.style.marginBottom = "20px";
+                                if(autEl) autEl.style.marginTop = "8px";
+                            } else {
+                                weatherInfoEl.style.marginBottom = "38px";
+                                if(autEl) autEl.style.marginTop = "14px";
+                            }
                         }
                     }
                 }
@@ -297,7 +301,10 @@
             var day = String(now.getDate());
             if(day.length < 2) day = '0' + day;
             var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            document.getElementById('currentDate').innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
+            var dateEl = document.getElementById('currentDate');
+            if (dateEl) {
+                dateEl.innerText = day + " " + months[now.getMonth()] + " " + now.getFullYear();
+            }
         }
 
         function fetchWeather() {
@@ -407,4 +414,261 @@
                                 if (code === 0) condition = "Clear";
                                 else if (code === 1) condition = "PartlyCloudy";
                                 else if (code === 2) condition = "MostlyCloudy";
-                                else
+                                else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
+                                else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
+                                else if (code === 61 || code === 63) condition = "Rain";
+                                else if (code === 65) condition = "HeavyRain";
+                                else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
+                                else if (code === 71 || code === 73) condition = "Snow";
+                                else if (code === 75) condition = "HeavySnow";
+                                else if (code === 80 || code === 81) condition = "Shower";
+                                else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
+                                else if (code === 96 || code === 99) condition = "Hail";
+                            }
+
+                            var quotesList = weatherDatabase[condition];
+                            var match = quotesList[Math.floor(Math.random() * quotesList.length)];
+
+                            var wIcon = document.getElementById('weatherIcon');
+                            var wTemp = document.getElementById('weatherTemp');
+                            var cLabel = document.getElementById('cityLabel');
+                            if(wIcon) wIcon.innerText = match.icon;
+                            if(wTemp) wTemp.innerText = temp + "°C";
+                            if(cLabel) cLabel.innerText = cityName.toUpperCase();
+                            
+                            safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, "- " + match.a);
+                        } catch (e) {
+                            showOfflineWeather();
+                        }
+                    } else {
+                        showOfflineWeather();
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function showOfflineWeather() {
+            safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
+                "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
+                "- The Offline Chronicler"
+            );
+            var wIcon = document.getElementById('weatherIcon');
+            var wTemp = document.getElementById('weatherTemp');
+            var cLabel = document.getElementById('cityLabel');
+            if(wIcon) wIcon.innerText = "🌐";
+            if(wTemp) wTemp.innerText = "Offline";
+            if(cLabel) cLabel.innerText = "DISCONNECTED";
+        }
+
+        function checkTimeEngine() {
+            var now = new Date();
+            var hours = String(now.getHours());
+            if(hours.length < 2) hours = '0' + hours;
+            var minutes = String(now.getMinutes());
+            if(minutes.length < 2) minutes = '0' + minutes;
+            var currentTimeStr = hours + ":" + minutes;
+
+            if (currentTimeStr !== lastTimeStr) {
+                lastTimeStr = currentTimeStr;
+                updateClock(hours, minutes);
+                updateDate();
+            }
+        }
+
+        function updateClock(hours, minutes) {
+            if (hours === "18" && minutes === "52") {
+                var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
+                var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
+                safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
+                return;
+            }
+
+            var fileTimeStr = hours + "_" + minutes;
+            var xhr = new XMLHttpRequest();
+            var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var quotesArray = JSON.parse(xhr.responseText);
+                            if (quotesArray && quotesArray.length > 0) {
+                                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                                var first = selected.quote_first || "";
+                                var timeCase = selected.quote_time_case || "";
+                                var last = selected.quote_last || "";
+                                
+                                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
+                                var maxSideLength = isPortrait ? 55 : 130; 
+                                
+                                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
+                                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
+
+                                if (first.length > maxSideLength) {
+                                    var cutIndex = first.length - maxSideLength;
+                                    var firstSentenceEnd = first.indexOf('.', cutIndex);
+                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
+                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
+                                    
+                                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
+                                        first = safeEllipsisPreHtml + first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                                    } else {
+                                        var breakPoint = first.indexOf(' ', cutIndex);
+                                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                                    }
+                                }
+
+                                if (last.length > maxSideLength) {
+                                    var subLast = last.slice(0, maxSideLength);
+                                    var lastPeriod = subLast.lastIndexOf('.');
+                                    var lastQuestion = subLast.lastIndexOf('?');
+                                    var lastExclamation = subLast.lastIndexOf('!');
+                                    
+                                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+                                    
+                                    if (lastSentenceEnd > 15) {
+                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                    } else {
+                                        var breakPoint = subLast.lastIndexOf(' ');
+                                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
+                                    }
+                                }
+                                
+                                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
+                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
+                                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+                                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
+                                
+                                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
+                            } else {
+                                showFallbackTime(hours + ":" + minutes);
+                            }
+                        } catch (e) {
+                            showFallbackTime(hours + ":" + minutes);
+                        }
+                    } else {
+                        showFallbackTime(hours + ":" + minutes);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        function showFallbackTime(timeStr) {
+            safeTransitionUpdate('clockQuote', 'clockAuthor', 
+                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
+                "- Unknown Timekeeper"
+            );
+        }
+
+        // --- 안전 장치가 추가된 setupAOD 함수 ---
+        var wakeLock = null;
+
+        function setupAOD() {
+            var aodToggle = document.getElementById('aodToggle');
+            var aodLabel = document.getElementById('aodLabel');
+
+            // DOM 요소를 찾을 수 없으면 다른 정상 기능의 붕괴를 막기 위해 함수를 즉시 빠져나갑니다.
+            if (!aodToggle || !aodLabel) {
+                return;
+            }
+
+            aodToggle.addEventListener('change', function() {
+                var self = this;
+                if (self.checked) {
+                    if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
+                        try {
+                            var requestPromise = navigator.wakeLock.request('screen');
+                            // 반환값이 올바른 Promise인지 유효성 검사 후 체이닝
+                            if (requestPromise && typeof requestPromise.then === 'function') {
+                                requestPromise
+                                    .then(function(lock) {
+                                        wakeLock = lock;
+                                        aodLabel.textContent = "AOD ON";
+                                        aodLabel.style.color = "#81c784"; 
+                                    })
+                                    .catch(function(err) {
+                                        aodLabel.textContent = "AOD ERROR";
+                                        self.checked = false;
+                                    });
+                            } else {
+                                aodLabel.textContent = "AOD ON (Not Supported)";
+                                aodLabel.style.color = "#e57373";
+                            }
+                        } catch (err) {
+                            aodLabel.textContent = "AOD ERROR";
+                            self.checked = false;
+                        }
+                    } else {
+                        aodLabel.textContent = "AOD ON (Not Supported)";
+                        aodLabel.style.color = "#e57373";
+                    }
+                } else {
+                    if (wakeLock !== null) {
+                        try {
+                            var releasePromise = wakeLock.release();
+                            if (releasePromise && typeof releasePromise.then === 'function') {
+                                releasePromise
+                                    .then(function() { wakeLock = null; })
+                                    .catch(function() { wakeLock = null; });
+                            } else {
+                                wakeLock = null;
+                            }
+                        } catch (err) {
+                            wakeLock = null;
+                        }
+                    }
+                    aodLabel.textContent = "AOD OFF";
+                    aodLabel.style.color = "#888";
+                }
+            });
+
+            document.addEventListener('visibilitychange', function() {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
+                        try {
+                            var resumePromise = navigator.wakeLock.request('screen');
+                            if (resumePromise && typeof resumePromise.then === 'function') {
+                                resumePromise
+                                    .then(function(lock) {
+                                        wakeLock = lock;
+                                    })
+                                    .catch(function() {
+                                        // 예외 조용히 격리
+                                    });
+                            }
+                        } catch (err) {
+                            // 예외 조용히 격리
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 초기화 안정 실행 로직 ---
+        // 한쪽 기능이 실패해도 대시보드가 구동할 수 있도록 실행 영역을 안전하게 분리합니다.
+        function safeRun() {
+            try {
+                init();
+            } catch (e) {
+                if (window.console) console.error("Initialize system failed:", e);
+            }
+            
+            try {
+                setupAOD();
+            } catch (e) {
+                if (window.console) console.error("AOD system failed:", e);
+            }
+        }
+
+        // window.onload 대신 브라우저 분석이 끝나자마자 화면을 띄우는 이벤트를 활용합니다.
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", safeRun);
+        } else {
+            safeRun();
+        }
+    </script>
+</body>
+</html>
