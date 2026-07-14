@@ -45,20 +45,23 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
-        /* --- [수정됨] 항상 잘 보이도록 AOD 스위치 스타일 변경 --- */
+        /* --- 구형 Safari 브라우저 대응을 위한 CSS 수정 --- */
         .aod-container {
             position: absolute;
             top: 40px;
             right: 50px;
             display: -webkit-flex; display: flex;
             -webkit-align-items: center; align-items: center;
-            gap: 8px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 11px;
             letter-spacing: 1px;
-            color: #888; /* 항상 눈에 띄게 기본 색상 밝게 */
-            opacity: 0.8; /* 숨김 처리 제거, 항상 잘 보이게 고정 */
+            color: #888; 
+            opacity: 0.8; 
             z-index: 1000;
+        }
+        /* gap 대신 margin-right 속성을 사용하여 간격 조절 */
+        .aod-container #aodLabel {
+            margin-right: 8px;
         }
         .switch {
             position: relative;
@@ -404,195 +407,4 @@
                                 if (code === 0) condition = "Clear";
                                 else if (code === 1) condition = "PartlyCloudy";
                                 else if (code === 2) condition = "MostlyCloudy";
-                                else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
-                                else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
-                                else if (code === 61 || code === 63) condition = "Rain";
-                                else if (code === 65) condition = "HeavyRain";
-                                else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
-                                else if (code === 71 || code === 73) condition = "Snow";
-                                else if (code === 75) condition = "HeavySnow";
-                                else if (code === 80 || code === 81) condition = "Shower";
-                                else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
-                                else if (code === 96 || code === 99) condition = "Hail";
-                            }
-
-                            var quotesList = weatherDatabase[condition];
-                            var match = quotesList[Math.floor(Math.random() * quotesList.length)];
-
-                            document.getElementById('weatherIcon').innerText = match.icon;
-                            document.getElementById('weatherTemp').innerText = temp + "°C";
-                            document.getElementById('cityLabel').innerText = cityName.toUpperCase();
-                            
-                            safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, "- " + match.a);
-                        } catch (e) {
-                            showOfflineWeather();
-                        }
-                    } else {
-                        showOfflineWeather();
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function showOfflineWeather() {
-            safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
-                "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
-                "- The Offline Chronicler"
-            );
-            document.getElementById('weatherIcon').innerText = "🌐";
-            document.getElementById('weatherTemp').innerText = "Offline";
-            document.getElementById('cityLabel').innerText = "DISCONNECTED";
-        }
-
-        function checkTimeEngine() {
-            var now = new Date();
-            var hours = String(now.getHours());
-            if(hours.length < 2) hours = '0' + hours;
-            var minutes = String(now.getMinutes());
-            if(minutes.length < 2) minutes = '0' + minutes;
-            var currentTimeStr = hours + ":" + minutes;
-
-            if (currentTimeStr !== lastTimeStr) {
-                lastTimeStr = currentTimeStr;
-                updateClock(hours, minutes);
-                updateDate();
-            }
-        }
-
-        function updateClock(hours, minutes) {
-            if (hours === "18" && minutes === "52") {
-                var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
-                var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
-                safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
-                return;
-            }
-
-            var fileTimeStr = hours + "_" + minutes;
-            var xhr = new XMLHttpRequest();
-            var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
-            
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var quotesArray = JSON.parse(xhr.responseText);
-                            if (quotesArray && quotesArray.length > 0) {
-                                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
-                                var first = selected.quote_first || "";
-                                var timeCase = selected.quote_time_case || "";
-                                var last = selected.quote_last || "";
-                                
-                                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
-                                var maxSideLength = isPortrait ? 55 : 130; 
-                                
-                                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
-                                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
-
-                                if (first.length > maxSideLength) {
-                                    var cutIndex = first.length - maxSideLength;
-                                    var firstSentenceEnd = first.indexOf('.', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
-                                    
-                                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
-                                        first = safeEllipsisPreHtml + first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
-                                    } else {
-                                        var breakPoint = first.indexOf(' ', cutIndex);
-                                        first = safeEllipsisPreHtml + first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
-                                    }
-                                }
-
-                                if (last.length > maxSideLength) {
-                                    var subLast = last.slice(0, maxSideLength);
-                                    var lastPeriod = subLast.lastIndexOf('.');
-                                    var lastQuestion = subLast.lastIndexOf('?');
-                                    var lastExclamation = subLast.lastIndexOf('!');
-                                    
-                                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
-                                    
-                                    if (lastSentenceEnd > 15) {
-                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
-                                    } else {
-                                        var breakPoint = subLast.lastIndexOf(' ');
-                                        last = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '') + safeEllipsisHtml;
-                                    }
-                                }
-                                
-                                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
-                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
-                                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
-                                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
-                                
-                                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
-                            } else {
-                                showFallbackTime(hours + ":" + minutes);
-                            }
-                        } catch (e) {
-                            showFallbackTime(hours + ":" + minutes);
-                        }
-                    } else {
-                        showFallbackTime(hours + ":" + minutes);
-                    }
-                }
-            };
-            xhr.send();
-        }
-
-        function showFallbackTime(timeStr) {
-            safeTransitionUpdate('clockQuote', 'clockAuthor', 
-                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
-                "- Unknown Timekeeper"
-            );
-        }
-
-        // --- [수정됨] DOM 충돌 없는 네이티브 WakeLock API 로직으로 교체 ---
-        var wakeLock = null;
-
-        async function setupAOD() {
-            var aodToggle = document.getElementById('aodToggle');
-            var aodLabel = document.getElementById('aodLabel');
-
-            aodToggle.addEventListener('change', async function() {
-                if (this.checked) {
-                    try {
-                        if ('wakeLock' in navigator) {
-                            wakeLock = await navigator.wakeLock.request('screen');
-                            aodLabel.textContent = "AOD ON";
-                            aodLabel.style.color = "#81c784"; 
-                        } else {
-                            // 지원하지 않는 브라우저일 경우 시각적 처리만
-                            aodLabel.textContent = "AOD ON (Not Supported)";
-                            aodLabel.style.color = "#e57373";
-                        }
-                    } catch (err) {
-                        aodLabel.textContent = "AOD ERROR";
-                        this.checked = false;
-                    }
-                } else {
-                    if (wakeLock !== null) {
-                        await wakeLock.release();
-                        wakeLock = null;
-                    }
-                    aodLabel.textContent = "AOD OFF";
-                    aodLabel.style.color = "#888";
-                }
-            });
-
-            // 화면을 벗어났다가 돌아왔을 때 WakeLock이 강제로 풀리는 현상 방지
-            document.addEventListener('visibilitychange', async function() {
-                if (wakeLock !== null && document.visibilityState === 'visible') {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            });
-        }
-        // -------------------------------------------------------------------
-
-        window.onload = function() {
-            init();
-            setupAOD(); 
-        };
-    </script>
-</body>
-</html>
+                                else
