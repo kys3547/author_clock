@@ -574,21 +574,35 @@
                 legacyVideo.setAttribute('title', 'AOD Standby');
                 legacyVideo.setAttribute('playsinline', '');
                 legacyVideo.setAttribute('webkit-playsinline', ''); // iOS 9 이하 구형 기기 맞춤 속성 (필수)
-                legacyVideo.setAttribute('loop', '');
                 legacyVideo.setAttribute('muted', '');
                 legacyVideo.muted = true; // 음소거가 확실히 되어 있어야 정책 상 자동 백그라운드 재생 허용됨
                 
-                // 화면 한 구석에 아주 작고 투명하게 숨겨 배치
-                legacyVideo.style.position = 'absolute';
-                legacyVideo.style.width = '1px';
-                legacyVideo.style.height = '1px';
-                legacyVideo.style.top = '0';
-                legacyVideo.style.left = '0';
-                legacyVideo.style.opacity = '0.01';
+                // [수정] loop 속성은 구형 iOS에서 절전 방지 동작을 무력화하므로 속성을 지정하지 않습니다.
+                // 대신 timeupdate 리스너를 활용해 주기적으로 재생 구간을 리셋(수동 루프)시킵니다.
+                legacyVideo.addEventListener('timeupdate', function() {
+                    if (this.currentTime > 0.5) {
+                        this.currentTime = 0;
+                    }
+                }, false);
+                
+                // 자연 종료될 경우에 대한 이중 방어 루프
+                legacyVideo.addEventListener('ended', function() {
+                    this.play();
+                }, false);
+
+                // [수정] 1px 크기의 비디오나 투명도가 완벽히 0인 요소는 모바일 Safari 최적화에 의해 일시정지될 수 있습니다.
+                // 따라서 물리적인 크기를 주되 화면 밖 좌표(-500px)로 안전하게 퇴출시킵니다.
+                legacyVideo.style.position = 'fixed';
+                legacyVideo.style.width = '120px';
+                legacyVideo.style.height = '120px';
+                legacyVideo.style.top = '-500px';
+                legacyVideo.style.left = '-500px';
+                legacyVideo.style.opacity = '0.05';
                 legacyVideo.style.pointerEvents = 'none';
+                legacyVideo.style.zIndex = '-9999';
                 
                 var source = document.createElement('source');
-                // 1프레임짜리 극소용량 무음 블랙 비디오 (base64)
+                // 1.5초 블랙 무음 영상 데이터
                 source.src = 'data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAG21kYXQAAAGzABAHAAABthABGWAAAAABAAA2Z2VzZHMAAAAAAQABAAEAAAA2YXZjMQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAc3R0cwAAAAAAAAABAAAAAQABAAABAAAAHHN0c2QAAAAAAAAAAQAAAFhzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAABoc3RzegAAAAAAAAAAAAAAAQAAAAEAAAAUc3RjbwAAAAAAAAABAAAAMAAAAGB1ZHRhAAAAWG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAAK2lsc3QAAAAjqXRvbwAAABtkYXRhAAAAAQAAAABMYXZmYzgxLjEyLjEwMA==';
                 source.type = 'video/mp4';
                 legacyVideo.appendChild(source);
