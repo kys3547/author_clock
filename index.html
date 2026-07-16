@@ -62,7 +62,6 @@
 
         .nobrk-ellipsis { white-space: nowrap; display: inline-block; color: #666; }
 
-        /* 저대비 새로고침 버튼 */
         .refresh-btn {
             position: absolute;
             top: 40px;
@@ -133,8 +132,8 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (v41 자동 업데이트) -->
-    <div class="version-label">v41</div>
+    <!-- 우측 하단 버전 레이블 (자동 업데이트 v42) -->
+    <div class="version-label">v42</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -218,7 +217,6 @@
             ]
         };
 
-        // WebKit 렌더 제약을 완전 돌파하는 표준 SVG 렌더러
         function getWeatherSVG(condition) {
             var svgStart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="weather-svg">';
             var svgEnd = '</svg>';
@@ -247,7 +245,6 @@
             return svgStart + body + svgEnd;
         }
 
-        // 초기 구동 안정화 레이어
         function init() {
             try {
                 window.addEventListener('resize', function() { lastTimeStr = ""; checkTimeEngine(); }, false);
@@ -270,7 +267,6 @@
             setInterval(applyBurnInProtection, 60000); 
         }
 
-        // 캐시 극복용 가상 새로고침
         function forceReload() {
             try {
                 var currentUrl = window.location.href.split('?')[0].split('#')[0];
@@ -304,7 +300,7 @@
                 txtEl.innerHTML = textHtml;
                 if(autEl) autEl.innerHTML = authorHtml;
                 
-                var rawTextLength = txtEl.innerText.length;
+                var rawTextLength = (txtEl.textContent || txtEl.innerText || "").length;
                 var isPortrait = window.matchMedia("(orientation: portrait)").matches;
                 
                 if (isPortrait) {
@@ -370,7 +366,6 @@
             }
         }
 
-        // [중요 수정] 위치 정보 호출을 try-catch로 감싸 지오로케이션 보안 예외가 시계를 정지시키는 현상 전면 예방
         function fetchWeather() {
             try {
                 if (navigator.geolocation && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -389,7 +384,6 @@
                     fetchFallbackLocation();
                 }
             } catch (err) {
-                // 구형 사파리 Standalone 모드에서 Geolocation이 던지는 동기식 Security Error 발생 시 즉각 IP 연동 폴백 우회
                 fetchFallbackLocation();
             }
         }
@@ -486,4 +480,464 @@
                                 else if (wind >= 50 && (code === 95 || code === 96 || code === 99)) condition = "Typhoon";
                                 else if (wind >= 50) condition = "RoughSeas";
                                 else if (wind >= 39) condition = "StrongWind";
-                                else if (humidity <= 30 && code <= 3) condition = "
+                                else if (humidity <= 30 && code <= 3) condition = "Dry";
+                                else {
+                                    if (code === 0) condition = "Clear";
+                                    else if (code === 1) condition = "PartlyCloudy";
+                                    else if (code === 2) condition = "MostlyCloudy";
+                                    else if (code === 3 || code === 45 || code === 48) condition = "Overcast";
+                                    else if (code === 51 || code === 53 || code === 55) condition = "Drizzle";
+                                    else if (code === 61 || code === 63) condition = "Rain";
+                                    else if (code === 65) condition = "HeavyRain";
+                                    else if (code === 66 || code === 67 || code === 77) condition = "Sleet";
+                                    else if (code === 71 || code === 73) condition = "Snow";
+                                    else if (code === 75) condition = "HeavySnow";
+                                    else if (code === 80 || code === 81) condition = "Shower";
+                                    else if (code === 82 || code === 85 || code === 86 || code === 95) condition = "HeavyRain"; 
+                                    else if (code === 96 || code === 99) condition = "Hail";
+                                }
+
+                                var quotesList = weatherDatabase[condition];
+                                var match = quotesList[Math.floor(Math.random() * quotesList.length)];
+
+                                var wIcon = document.getElementById('weatherIcon');
+                                var wTemp = document.getElementById('weatherTemp');
+                                var cLabel = document.getElementById('cityLabel');
+                                if(wIcon) wIcon.innerHTML = getWeatherSVG(condition);
+                                if(wTemp) wTemp.innerText = temp + "°C";
+                                if(cLabel) cLabel.innerText = cityName.toUpperCase();
+                                
+                                safeTransitionUpdate('weatherQuote', 'weatherAuthor', match.q, "- " + match.a);
+                            } catch (e) {
+                                showOfflineWeather();
+                            }
+                        } else {
+                            showOfflineWeather();
+                        }
+                    }
+                };
+                xhr.send();
+            } catch (err) {
+                showOfflineWeather();
+            }
+        }
+
+        function showOfflineWeather() {
+            safeTransitionUpdate('weatherQuote', 'weatherAuthor', 
+                "The connection to the world was severed; the sky remained an <strong>unreadable page</strong>.", 
+                "- The Offline Chronicler"
+            );
+            var wIcon = document.getElementById('weatherIcon');
+            var wTemp = document.getElementById('weatherTemp');
+            var cLabel = document.getElementById('cityLabel');
+            if(wIcon) wIcon.innerHTML = getWeatherSVG("Offline");
+            if(wTemp) wTemp.innerText = "Offline";
+            if(cLabel) cLabel.innerText = "DISCONNECTED";
+        }
+
+        function checkTimeEngine() {
+            var now = new Date();
+            var hours = String(now.getHours());
+            if(hours.length < 2) hours = '0' + hours;
+            var minutes = String(now.getMinutes());
+            if(minutes.length < 2) minutes = '0' + minutes;
+            var currentTimeStr = hours + ":" + minutes;
+
+            if (currentTimeStr !== lastTimeStr) {
+                lastTimeStr = currentTimeStr;
+                updateClock(hours, minutes);
+                updateDate();
+            }
+        }
+
+        function fetchQuote(url, callback) {
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", url, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                var quotesArray = JSON.parse(xhr.responseText);
+                                if (quotesArray && quotesArray.length > 0) {
+                                    callback(true, quotesArray);
+                                } else {
+                                    callback(false);
+                                }
+                            } catch (e) {
+                                callback(false);
+                            }
+                        } else {
+                            callback(false);
+                        }
+                    }
+                };
+                xhr.send();
+            } catch (err) {
+                callback(false);
+            }
+        }
+
+        function updateClock(hours, minutes) {
+            if (hours === "18" && minutes === "52") {
+                var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
+                var customAuthor = "- <em>The Sweetest Heist in History</em>, Octavia Spencer";
+                safeTransitionUpdate('clockQuote', 'clockAuthor', customQuote, customAuthor);
+                return;
+            }
+
+            var fileTimeStr = hours + "_" + minutes;
+            var primaryUrl = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            var backupUrl = "https://literature-clock.jenevoldsen.com/times/" + fileTimeStr + ".json";
+            
+            fetchQuote(primaryUrl, function(success, data) {
+                if (success) {
+                    renderQuote(data, hours, minutes);
+                } else {
+                    fetchQuote(backupUrl, function(success2, data2) {
+                        if (success2) {
+                            renderQuote(data2, hours, minutes);
+                        } else {
+                            showFallbackTime(hours + ":" + minutes);
+                        }
+                    });
+                }
+            });
+        }
+
+        function renderQuote(quotesArray, hours, minutes) {
+            try {
+                if (!quotesArray || typeof quotesArray.length === "undefined" || quotesArray.length === 0) {
+                    showFallbackTime(hours + ":" + minutes);
+                    return;
+                }
+                
+                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                if (!selected) {
+                    showFallbackTime(hours + ":" + minutes);
+                    return;
+                }
+                
+                var first = selected.quote_first || "";
+                var timeCase = selected.quote_time_case || "";
+                var last = selected.quote_last || "";
+                
+                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
+                var maxSideLength = isPortrait ? 55 : 130; 
+                
+                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
+                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
+
+                if (first.length > maxSideLength) {
+                    var cutIndex = first.length - maxSideLength;
+                    var firstSentenceEnd = first.indexOf('.', cutIndex);
+                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
+                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
+                    
+                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
+                        first = first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                    } else {
+                        var breakPoint = first.indexOf(' ', cutIndex);
+                        var slicedFirst = first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                        first = safeEllipsisPreHtml + slicedFirst;
+                    }
+                }
+
+                if (last.length > maxSideLength) {
+                    var subLast = last.slice(0, maxSideLength);
+                    var lastPeriod = subLast.lastIndexOf('.');
+                    var lastQuestion = subLast.lastIndexOf('?');
+                    var lastExclamation = subLast.lastIndexOf('!');
+                    
+                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+                    
+                    if (lastSentenceEnd > 15) {
+                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                    } else {
+                        var breakPoint = subLast.lastIndexOf(' ');
+                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
+                        last = slicedLast + safeEllipsisHtml;
+                    }
+                }
+                
+                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
+                displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
+                
+                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
+            } catch (e) {
+                showFallbackTime(hours + ":" + minutes);
+            }
+        }
+
+        function showFallbackTime(timeStr) {
+            safeTransitionUpdate('clockQuote', 'clockAuthor', 
+                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
+                "- Unknown Timekeeper"
+            );
+        }
+
+        var wakeLock = null;
+        var legacyVideo = null; 
+        var legacyAudio = null; 
+        var legacyAudioCtx = null; 
+        var legacyAudioSource = null; 
+        var legacyIframe = null; 
+        var legacyTimer = null; 
+
+        function enableWebAudioSilence() {
+            try {
+                if (!legacyAudioCtx) {
+                    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        legacyAudioCtx = new AudioContextClass();
+                    }
+                }
+                
+                if (legacyAudioCtx) {
+                    if (legacyAudioCtx.state === 'suspended') {
+                        legacyAudioCtx.resume();
+                    }
+                    
+                    if (!legacyAudioSource) {
+                        var bufferSize = 2 * legacyAudioCtx.sampleRate;
+                        var emptyBuffer = legacyAudioCtx.createBuffer(1, bufferSize, legacyAudioCtx.sampleRate);
+                        var output = emptyBuffer.getChannelData(0);
+                        
+                        for (var i = 0; i < bufferSize; i++) {
+                            output[i] = 0;
+                        }
+                        
+                        legacyAudioSource = legacyAudioCtx.createBufferSource();
+                        legacyAudioSource.buffer = emptyBuffer;
+                        legacyAudioSource.loop = true;
+                        legacyAudioSource.connect(legacyAudioCtx.destination);
+                        legacyAudioSource.start(0);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Web Audio Silence Error:", err);
+            }
+        }
+
+        function enableLegacyAOD() {
+            try {
+                if (!legacyAudio && document.body) {
+                    legacyAudio = document.createElement('audio');
+                    legacyAudio.setAttribute('title', 'AOD Standby Audio');
+                    legacyAudio.setAttribute('loop', '');
+                    legacyAudio.setAttribute('autoplay', '');
+                    legacyAudio.style.display = 'none';
+                    
+                    legacyAudio.muted = false;
+                    legacyAudio.volume = 0.05; 
+                    
+                    legacyAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
+                    document.body.appendChild(legacyAudio);
+                }
+
+                if (legacyAudio) {
+                    try {
+                        var audioPlayPromise = legacyAudio.play();
+                        if (audioPlayPromise && typeof audioPlayPromise.then === 'function') {
+                            audioPlayPromise.then(function() {
+                            }).catch(function(e) {
+                                if (window.console) console.log("Legacy Audio Play Async Error:", e);
+                            });
+                        }
+                    } catch (e) {
+                        if (window.console) console.log("Legacy Audio Play Sync Error:", e);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Audio Setup Error:", err);
+            }
+
+            try {
+                if (!legacyVideo && document.body) {
+                    legacyVideo = document.createElement('video');
+                    legacyVideo.setAttribute('title', 'AOD Standby Video');
+                    legacyVideo.setAttribute('playsinline', '');
+                    legacyVideo.setAttribute('webkit-playsinline', ''); 
+                    
+                    legacyVideo.muted = false;
+                    legacyVideo.volume = 0.05;
+                    
+                    legacyVideo.addEventListener('timeupdate', function() {
+                        if (this.currentTime > 0.5) {
+                            this.currentTime = 0;
+                        }
+                    }, false);
+                    
+                    legacyVideo.addEventListener('ended', function() {
+                        try { this.play(); } catch(e) {}
+                    }, false);
+
+                    legacyVideo.style.position = 'fixed';
+                    legacyVideo.style.width = '10px';
+                    legacyVideo.style.height = '10px';
+                    legacyVideo.style.bottom = '10px';
+                    legacyVideo.style.right = '10px';
+                    legacyVideo.style.opacity = '0.05';
+                    legacyVideo.style.pointerEvents = 'none';
+                    legacyVideo.style.zIndex = '9999';
+                    
+                    var source = document.createElement('source');
+                    source.src = 'data:video/mp4;base64,AAAAHGZ0eXBNNFYgAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAAG21kYXQAAAGzABAHAAABthABGWAAAAABAAA2Z2VzZHMAAAAAAQABAAEAAAA2YXZjMQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAc3R0cwAAAAAAAAABAAAAAQABAAABAAAAHHN0c2QAAAAAAAAAAQAAAFhzdHNjAAAAAAAAAAEAAAABAAAAAQAAAAEAAABoc3RzegAAAAAAAAAAAAAAAQAAAAEAAAAUc3RjbwAAAAAAAAABAAAAMAAAAGB1ZHRhAAAAWG1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAAK2lsc3QAAAAjqXRvbwAAABtkYXRhAAAAAQAAAABMYXZmYzgxLjEyLjEwMA==';
+                    source.type = 'video/mp4';
+                    legacyVideo.appendChild(source);
+                    document.body.appendChild(legacyVideo);
+                }
+                
+                if (legacyVideo) {
+                    try {
+                        var playPromise = legacyVideo.play();
+                        if (playPromise && typeof playPromise.then === 'function') {
+                            playPromise.then(function() {
+                            }).catch(function(e) {
+                                if (window.console) console.log("Legacy AOD Play Async Error:", e);
+                            });
+                        }
+                    } catch (e) {
+                        if (window.console) console.log("Legacy AOD Play Sync Error:", e);
+                    }
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Video Setup Error:", err);
+            }
+
+            try {
+                if (!legacyIframe && document.body) {
+                    legacyIframe = document.createElement('iframe');
+                    
+                    legacyIframe.style.position = 'fixed';
+                    legacyIframe.style.width = '10px';
+                    legacyIframe.style.height = '10px';
+                    legacyIframe.style.bottom = '10px';
+                    legacyIframe.style.right = '10px';
+                    legacyIframe.style.opacity = '0.01';
+                    legacyIframe.style.pointerEvents = 'none';
+                    legacyIframe.style.border = 'none';
+                    legacyIframe.style.zIndex = '-9999';
+                    
+                    document.body.appendChild(legacyIframe);
+                }
+
+                if (!legacyTimer) {
+                    legacyTimer = window.setInterval(function() {
+                        if (!document.hidden && legacyIframe && legacyIframe.contentWindow) {
+                            try {
+                                legacyIframe.contentWindow.location.replace('about:blank?t=' + new Date().getTime());
+                            } catch(err) {
+                            }
+                        }
+                    }, 15000); 
+                }
+            } catch (err) {
+                if (window.console) console.log("Legacy Timer Setup Error:", err);
+            }
+        }
+
+        function disableLegacyAOD() {
+            if (legacyVideo) {
+                try { legacyVideo.pause(); } catch (e) {}
+            }
+            if (legacyAudio) {
+                try { legacyAudio.pause(); } catch (e) {}
+            }
+            if (legacyTimer) {
+                window.clearInterval(legacyTimer);
+                legacyTimer = null;
+            }
+            if (legacyIframe && legacyIframe.parentNode) {
+                try {
+                    legacyIframe.parentNode.removeChild(legacyIframe);
+                    legacyIframe = null;
+                } catch (e) {}
+            }
+            if (legacyAudioSource) {
+                try { legacyAudioSource.stop(); } catch(e) {}
+                legacyAudioSource = null;
+            }
+            if (legacyAudioCtx) {
+                try { legacyAudioCtx.close(); } catch(e) {}
+                legacyAudioCtx = null;
+            }
+        }
+
+        function enableAOD() {
+            try {
+                if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
+                    var requestPromise = null;
+                    try {
+                        requestPromise = navigator.wakeLock.request('screen');
+                    } catch (err) {
+                        enableLegacyAOD();
+                        return;
+                    }
+
+                    if (requestPromise && typeof requestPromise.then === 'function') {
+                        requestPromise
+                            .then(function(lock) {
+                                wakeLock = lock;
+                            })
+                            .catch(function(err) {
+                                enableLegacyAOD();
+                            });
+                    } else {
+                        enableLegacyAOD();
+                    }
+                } else {
+                    enableLegacyAOD();
+                }
+            } catch (err) {
+                if (window.console) console.log("AOD Activation Error:", err);
+            }
+        }
+
+        function setupAOD() {
+            enableAOD();
+
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    enableAOD();
+                }
+            });
+
+            window.addEventListener('focus', function() {
+                enableAOD();
+            }, false);
+
+            window.addEventListener('pageshow', function() {
+                enableAOD();
+            }, false);
+
+            var triggerAODOnce = function() {
+                enableAOD();
+                enableWebAudioSilence(); 
+                document.removeEventListener('touchstart', triggerAODOnce, false);
+                document.removeEventListener('click', triggerAODOnce, false);
+            };
+            document.addEventListener('touchstart', triggerAODOnce, false);
+            document.addEventListener('click', triggerAODOnce, false);
+        }
+
+        function safeRun() {
+            try {
+                init();
+            } catch (e) {
+                if (window.console) console.error("Initialize system failed:", e);
+            }
+            
+            try {
+                setupAOD();
+            } catch (e) {
+                if (window.console) console.error("AOD system failed:", e);
+            }
+        }
+
+        safeRun();
+    </script>
+</body>
+</html>
