@@ -124,7 +124,6 @@
 </head>
 <body>
 
-    <!-- 디자인 새로고침 버튼 -->
     <div class="refresh-btn" id="refreshBtn" onclick="forceReload()">
         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 4v6h-6"></path>
@@ -132,8 +131,7 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (자동 업데이트 v42) -->
-    <div class="version-label">v42</div>
+    <div class="version-label">v43</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -587,7 +585,8 @@
             }
 
             var fileTimeStr = hours + "_" + minutes;
-            var primaryUrl = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            // [중요 수정] 저장소 소유주 ID 최신화 적용 완료 (JohannesNE -> JohsEnevoldsen)
+            var primaryUrl = "https://raw.githubusercontent.com/JohsEnevoldsen/literature-clock/master/docs/times/" + fileTimeStr + ".json";
             var backupUrl = "https://literature-clock.jenevoldsen.com/times/" + fileTimeStr + ".json";
             
             fetchQuote(primaryUrl, function(success, data) {
@@ -941,3 +940,5 @@
     </script>
 </body>
 </html>
+```"
+}
