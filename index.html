@@ -40,10 +40,8 @@
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         
-        /* [중요 수정] 아이콘의 크기를 옆의 기온 텍스트(2.8rem)와 완벽히 1대1로 일치시킴 */
+        /* [중요 수정] 아이콘의 가상 flex-shrink 규격 설정 */
         #weatherIcon { 
-            font-size: 2.8rem !important; 
-            line-height: 1; 
             margin-right: 18px; 
             display: -webkit-inline-flex !important;
             display: inline-flex !important;
@@ -51,7 +49,14 @@
             -webkit-justify-content: center; justify-content: center;
             -webkit-flex-shrink: 0;
             flex-shrink: 0;
-            color: #ff9f0a; /* 대시보드와 어울리는 오렌지-옐로우 벡터 악센트 부여 */
+            color: #ff9f0a; 
+        }
+
+        /* [중요 수정] 구형 사파리에서 em 연산 실패로 작아지던 버그를 선언적 CSS 뷰포트로 완전 강제 매핑 */
+        #weatherIcon .weather-svg {
+            width: 2.8rem !important;
+            height: 2.8rem !important;
+            display: inline-block;
         }
         
         .weather-info span.temp { font-size: 2.8rem; color: #aaa; font-weight: 200; line-height: 1; margin-right: 18px; }
@@ -101,8 +106,13 @@
             .date-display { top: 30px; left: 40px; font-size: 1rem; }
             
             .weather-info { margin-bottom: 20px; }
-            /* 포트레이트 가중 규격 기온(2.4rem)과 완전 일치화 */
-            #weatherIcon { font-size: 2.4rem !important; margin-right: 14px; -webkit-flex-shrink: 0; flex-shrink: 0; display: inline-block !important; }
+            
+            #weatherIcon { margin-right: 14px; }
+            #weatherIcon .weather-svg {
+                width: 2.4rem !important;
+                height: 2.4rem !important;
+            }
+            
             .weather-info span.temp { font-size: 2.4rem; margin-right: 14px; }
             .weather-info span.city { font-size: 0.95rem; margin-bottom: 3px; }
             
@@ -125,8 +135,8 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (자동 업데이트 v38) -->
-    <div class="version-label">v38</div>
+    <!-- 우측 하단 버전 레이블 (자동 갱신 v39) -->
+    <div class="version-label">v39</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -210,10 +220,9 @@
             ]
         };
 
-        // [중요 신설] WebKit 이미지 스케일 제한 우회용 표준 경량 벡터 로직
-        // 어떠한 구형 사파리 엔진 환경에서도 글꼴 뭉개짐이나 무반응 현상 없이 기온 텍스트와 정확하게 크기가 동조됩니다.
+        // WebKit 렌더 제약을 완전 돌파하는 표준 SVG 렌더러
         function getWeatherSVG(condition) {
-            var svgStart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em; height:1em; display:inline-block;">';
+            var svgStart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="weather-svg">';
             var svgEnd = '</svg>';
             var body = '';
 
@@ -475,8 +484,6 @@
                             var wIcon = document.getElementById('weatherIcon');
                             var wTemp = document.getElementById('weatherTemp');
                             var cLabel = document.getElementById('cityLabel');
-                            
-                            // [수정] 이모지 대신 고해상도 동일 스케일 SVG 로 대체
                             if(wIcon) wIcon.innerHTML = getWeatherSVG(condition);
                             if(wTemp) wTemp.innerText = temp + "°C";
                             if(cLabel) cLabel.innerText = cityName.toUpperCase();
@@ -521,6 +528,32 @@
             }
         }
 
+        // 공통 XMLHttp 비동기 호출 추상화 함수
+        function fetchQuote(url, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var quotesArray = JSON.parse(xhr.responseText);
+                            if (quotesArray && quotesArray.length > 0) {
+                                callback(true, quotesArray);
+                            } else {
+                                callback(false);
+                            }
+                        } catch (e) {
+                            callback(false);
+                        }
+                    } else {
+                        callback(false);
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // [중요 수정] 백업 CDN 및 폴백 체계를 내장하여 시각 무한 폴백 멈춤 해결
         function updateClock(hours, minutes) {
             if (hours === "18" && minutes === "52") {
                 var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
@@ -530,84 +563,81 @@
             }
 
             var fileTimeStr = hours + "_" + minutes;
-            var xhr = new XMLHttpRequest();
-            var url = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            var primaryUrl = "https://raw.githubusercontent.com/JohannesNE/literature-clock/master/docs/times/" + fileTimeStr + ".json";
+            var backupUrl = "https://literature-clock.jenevoldsen.com/times/" + fileTimeStr + ".json";
             
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var quotesArray = JSON.parse(xhr.responseText);
-                            if (quotesArray && quotesArray.length > 0) {
-                                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
-                                var first = selected.quote_first || "";
-                                var timeCase = selected.quote_time_case || "";
-                                var last = selected.quote_last || "";
-                                
-                                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
-                                var maxSideLength = isPortrait ? 55 : 130; 
-                                
-                                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
-                                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
-
-                                if (first.length > maxSideLength) {
-                                    var cutIndex = first.length - maxSideLength;
-                                    var firstSentenceEnd = first.indexOf('.', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
-                                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
-                                    
-                                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
-                                        first = first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
-                                    } else {
-                                        var breakPoint = first.indexOf(' ', cutIndex);
-                                        var slicedFirst = first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
-                                        first = safeEllipsisPreHtml + slicedFirst;
-                                    }
-                                }
-
-                                if (last.length > maxSideLength) {
-                                    var subLast = last.slice(0, maxSideLength);
-                                    var lastPeriod = subLast.lastIndexOf('.');
-                                    var lastQuestion = subLast.lastIndexOf('?');
-                                    var lastExclamation = subLast.lastIndexOf('!');
-                                    
-                                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
-                                    
-                                    if (lastSentenceEnd > 15) {
-                                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
-                                    } else {
-                                        var breakPoint = subLast.lastIndexOf(' ');
-                                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
-                                        last = slicedLast + safeEllipsisHtml;
-                                    }
-                                }
-                                
-                                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
-                                displayQuote = displayQuote.replace(/\*\*(.*?)\*\"/g, '<strong>$1</strong>')
-                                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
-                                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
-                                
-                                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
-                            } else {
-                                showFallbackTime(hours + ":" + minutes);
-                            }
-                        } catch (e) {
+            fetchQuote(primaryUrl, function(success, data) {
+                if (success) {
+                    renderQuote(data, hours, minutes);
+                } else {
+                    // GitHub 로딩 실패 혹은 CORS 블로킹 감지 시 공식 사이트 데이터 세션으로 우회
+                    fetchQuote(backupUrl, function(success2, data2) {
+                        if (success2) {
+                            renderQuote(data2, hours, minutes);
+                        } else {
                             showFallbackTime(hours + ":" + minutes);
                         }
-                    } else {
-                        showFallbackTime(hours + ":" + minutes);
-                    }
+                    });
                 }
-            };
-            xhr.send();
+            });
         }
 
-        function showFallbackTime(timeStr) {
-            safeTransitionUpdate('clockQuote', 'clockAuthor', 
-                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
-                "- Unknown Timekeeper"
-            );
+        // 인용구 분석 가공 렌더러 함수
+        function renderQuote(quotesArray, hours, minutes) {
+            try {
+                var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                var first = selected.quote_first || "";
+                var timeCase = selected.quote_time_case || "";
+                var last = selected.quote_last || "";
+                
+                var isPortrait = window.matchMedia("(orientation: portrait)").matches;
+                var maxSideLength = isPortrait ? 55 : 130; 
+                
+                var safeEllipsisHtml = '<span class="nobrk-ellipsis">&nbsp;. . .</span>';
+                var safeEllipsisPreHtml = '<span class="nobrk-ellipsis">. . .&nbsp;</span>';
+
+                if (first.length > maxSideLength) {
+                    var cutIndex = first.length - maxSideLength;
+                    var firstSentenceEnd = first.indexOf('.', cutIndex);
+                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('?', cutIndex);
+                    if (firstSentenceEnd === -1 || firstSentenceEnd >= first.length - 10) firstSentenceEnd = first.indexOf('!', cutIndex);
+                    
+                    if (firstSentenceEnd !== -1 && firstSentenceEnd < first.length - 5) {
+                        first = first.slice(firstSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                    } else {
+                        var breakPoint = first.indexOf(' ', cutIndex);
+                        var slicedFirst = first.slice(breakPoint === -1 ? cutIndex : breakPoint).replace(/^\s+|\s+$/g, '');
+                        first = safeEllipsisPreHtml + slicedFirst;
+                    }
+                }
+
+                if (last.length > maxSideLength) {
+                    var subLast = last.slice(0, maxSideLength);
+                    var lastPeriod = subLast.lastIndexOf('.');
+                    var lastQuestion = subLast.lastIndexOf('?');
+                    var lastExclamation = subLast.lastIndexOf('!');
+                    
+                    var lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+                    
+                    if (lastSentenceEnd > 15) {
+                        last = last.slice(0, lastSentenceEnd + 1).replace(/^\s+|\s+$/g, '');
+                    } else {
+                        var breakPoint = subLast.lastIndexOf(' ');
+                        var slicedLast = last.slice(0, breakPoint === -1 ? maxSideLength : breakPoint).replace(/^\s+|\s+$/g, '');
+                        last = slicedLast + safeEllipsisHtml;
+                    }
+                }
+                
+                var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
+                // 마크다운 문법 볼드 치환용 정규식 타이포 복원 수정 완료
+                displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                           .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+                                           .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
+                
+                safeTransitionUpdate('clockQuote', 'clockAuthor', displayQuote, "- <em>" + selected.title + "</em>, " + selected.author);
+            } catch (e) {
+                showFallbackTime(hours + ":" + minutes);
+            }
         }
 
         // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 (항상 활성화) ---
@@ -666,6 +696,13 @@
                     legacyAudio.setAttribute('autoplay', '');
                     legacyAudio.style.display = 'none';
                     
+                    // [중요 수정] iOS Standalone WebApp 환경은 미디어가 '음소거(Muted)' 상태일 경우 
+                    // 웹앱의 잠금 방지 하드웨어 독점 독점 권한을 박탈하여 화면을 잠그도록 봉인되어 있습니다.
+                    // 따라서 파일 자체가 디지털 무음(0)으로 가청 대역이 비어있는 원본 음원을 '음소거 해제(Unmuted)' 상태로 호출합니다.
+                    // 아이패드의 물리 볼륨을 켜두어도 소음이 전혀 발생하지 않지만, OS 시스템은 가청 음향을 수신하는 것으로 판정해 꺼짐을 완벽히 차단합니다.
+                    legacyAudio.muted = false;
+                    legacyAudio.volume = 0.05; // 미세 가동 볼륨 적용
+                    
                     legacyAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
                     document.body.appendChild(legacyAudio);
                 }
@@ -689,14 +726,15 @@
             }
 
             try {
-                // 2. 비디오 루프 기법 가동 (iOS 10 이상 및 일반 뷰포트 내 강제 구동용)
+                // 2. 비디오 루프 기법 가동 (비디오 역시 강제 음소거를 해제하여 Lock 권한 획득)
                 if (!legacyVideo && document.body) {
                     legacyVideo = document.createElement('video');
                     legacyVideo.setAttribute('title', 'AOD Standby Video');
                     legacyVideo.setAttribute('playsinline', '');
                     legacyVideo.setAttribute('webkit-playsinline', ''); 
-                    legacyVideo.setAttribute('muted', '');
-                    legacyVideo.muted = true; 
+                    
+                    legacyVideo.muted = false;
+                    legacyVideo.volume = 0.05;
                     
                     legacyVideo.addEventListener('timeupdate', function() {
                         if (this.currentTime > 0.5) {
@@ -743,7 +781,7 @@
             }
 
             try {
-                // 3. Standalone(홈화면 추가)용 iframe 가상 네비게이션 적용
+                // 3. Standalone(홈화면 추가)용 iframe 가상 네비게이션 적용 (뷰포트 상주형)
                 if (!legacyIframe && document.body) {
                     legacyIframe = document.createElement('iframe');
                     
@@ -805,7 +843,6 @@
 
         function enableAOD() {
             try {
-                // 1. 현대적인 브라우저라면 Wake Lock API 시도
                 if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
                     var requestPromise = null;
                     try {
@@ -827,7 +864,6 @@
                         enableLegacyAOD();
                     }
                 } else {
-                    // 2. 구형 아이패드(iOS 9) 및 홈 화면(Standalone) 환경 대응
                     enableLegacyAOD();
                 }
             } catch (err) {
