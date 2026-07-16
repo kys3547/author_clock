@@ -40,7 +40,6 @@
 
         .weather-info { display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 35px; -webkit-transition: margin-bottom 0.3s ease; transition: margin-bottom 0.3s ease; }
         
-        /* [중요 수정] 아이콘의 가상 flex-shrink 규격 설정 */
         #weatherIcon { 
             margin-right: 18px; 
             display: -webkit-inline-flex !important;
@@ -52,7 +51,6 @@
             color: #ff9f0a; 
         }
 
-        /* [중요 수정] 구형 사파리에서 em 연산 실패로 작아지던 버그를 선언적 CSS 뷰포트로 완전 강제 매핑 */
         #weatherIcon .weather-svg {
             width: 2.8rem !important;
             height: 2.8rem !important;
@@ -135,8 +133,8 @@
         </svg>
     </div>
 
-    <!-- 우측 하단 버전 레이블 (자동 갱신 v39) -->
-    <div class="version-label">v39</div>
+    <!-- 우측 하단 버전 레이블 (v40 자동 업데이트) -->
+    <div class="version-label">v40</div>
 
     <div class="panel left-panel" id="weatherPanel">
         <div class="date-display" id="currentDate">-- --- ----</div>
@@ -528,32 +526,36 @@
             }
         }
 
-        // 공통 XMLHttp 비동기 호출 추상화 함수
+        // [중요 수정] 구형 사파리 환경에서 CORS나 내부 에러 발생 시 동기식 중단을 완벽히 막기 위해 try-catch 캡슐화 적용
         function fetchQuote(url, callback) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", url, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var quotesArray = JSON.parse(xhr.responseText);
-                            if (quotesArray && quotesArray.length > 0) {
-                                callback(true, quotesArray);
-                            } else {
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", url, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                var quotesArray = JSON.parse(xhr.responseText);
+                                if (quotesArray && quotesArray.length > 0) {
+                                    callback(true, quotesArray);
+                                } else {
+                                    callback(false);
+                                }
+                            } catch (e) {
                                 callback(false);
                             }
-                        } catch (e) {
+                        } else {
                             callback(false);
                         }
-                    } else {
-                        callback(false);
                     }
-                }
-            };
-            xhr.send();
+                };
+                xhr.send();
+            } catch (err) {
+                // xhr.send() 등이 동기식으로 던지는 네트워크 및 시큐리티 오류를 안전하게 격리
+                callback(false);
+            }
         }
 
-        // [중요 수정] 백업 CDN 및 폴백 체계를 내장하여 시각 무한 폴백 멈춤 해결
         function updateClock(hours, minutes) {
             if (hours === "18" && minutes === "52") {
                 var customQuote = "“Let's give her a minute and then move in at exactly”—Randi checked the watch on her wrist... “<strong>six fifty-two</strong>,” she ordered.";
@@ -585,7 +587,18 @@
         // 인용구 분석 가공 렌더러 함수
         function renderQuote(quotesArray, hours, minutes) {
             try {
+                // 비정상적인 데이터 수신 대응용 가드 클로즈 장착
+                if (!quotesArray || typeof quotesArray.length === "undefined" || quotesArray.length === 0) {
+                    showFallbackTime(hours + ":" + minutes);
+                    return;
+                }
+                
                 var selected = quotesArray[Math.floor(Math.random() * quotesArray.length)];
+                if (!selected) {
+                    showFallbackTime(hours + ":" + minutes);
+                    return;
+                }
+                
                 var first = selected.quote_first || "";
                 var timeCase = selected.quote_time_case || "";
                 var last = selected.quote_last || "";
@@ -629,7 +642,6 @@
                 }
                 
                 var displayQuote = first + " <strong>" + timeCase + "</strong> " + last;
-                // 마크다운 문법 볼드 치환용 정규식 타이포 복원 수정 완료
                 displayQuote = displayQuote.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                            .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
                                            .replace(/<em>(.*?)<\/em>/gi, '<strong>$1</strong>');
@@ -638,6 +650,13 @@
             } catch (e) {
                 showFallbackTime(hours + ":" + minutes);
             }
+        }
+
+        function showFallbackTime(timeStr) {
+            safeTransitionUpdate('clockQuote', 'clockAuthor', 
+                "The clock hands quietly moved to <strong>" + timeStr + "</strong> . . . waiting for the next story.", 
+                "- Unknown Timekeeper"
+            );
         }
 
         // --- 구형 기기 및 일반 기기를 동시 커버하는 AOD 로직 (항상 활성화) ---
@@ -843,6 +862,7 @@
 
         function enableAOD() {
             try {
+                // 1. 현대적인 브라우저라면 Wake Lock API 시도
                 if (navigator.wakeLock && typeof navigator.wakeLock.request === 'function') {
                     var requestPromise = null;
                     try {
@@ -864,6 +884,7 @@
                         enableLegacyAOD();
                     }
                 } else {
+                    // 2. 구형 아이패드(iOS 9) 및 홈 화면(Standalone) 환경 대응
                     enableLegacyAOD();
                 }
             } catch (err) {
